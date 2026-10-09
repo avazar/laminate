@@ -1,0 +1,20 @@
+{
+  "name": "laminate",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Критерии прочности и прогрессивное разрушение слоистых композитов — учебный статический сайт",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "test": "node --test test/core.test.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "esbuild": "^0.28.2",
+    "katex": "^0.19.0",
+    "preact": "^11.0.1",
+    "three": "^0.186.1"
+  }
+}

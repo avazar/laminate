@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ламинат · лаборатория прочности</title>
+<meta name="description" content="Критерии прочности слоя и прогрессивное разрушение слоистого композита: интерактивные поверхности прочности и виртуальные испытания пакета.">
+<script>
+  // Тема и масштаб применяются до отрисовки, чтобы страница не мигала.
+  try {
+    var saved = JSON.parse(localStorage.getItem('laminate.ui') || '{}');
+    if (saved.theme === 'dark') document.documentElement.dataset.theme = 'dark';
+    if (saved.scale) document.documentElement.style.setProperty('--scale', saved.scale);
+  } catch (e) {}
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 5l13 6-13 6-13-6z' fill='%233f9d95' stroke='%230f151c' stroke-width='1.4' stroke-linejoin='round'/%3E%3Cpath d='M3 16l13 6 13-6' fill='none' stroke='%23c9990a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M3 21l13 6 13-6' fill='none' stroke='%230f151c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app"></div>
+<noscript><p style="padding:2rem;font:1.1rem sans-serif">Сайту нужен JavaScript: все расчёты выполняются в браузере.</p></noscript>
+<script src="app.js"></script>
+</body>
+</html>
