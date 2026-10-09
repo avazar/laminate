@@ -65,7 +65,7 @@ function About({ dialogRef }) {
 
 function App() {
   const [ui, setUi] = useState(() => {
-    const saved = loadStored(UI_KEY, { theme: 'light', scale: 1, tab: 'criteria' });
+    const saved = loadStored(UI_KEY, { theme: 'light', scale: 1, tab: 'criteria', hideLeft: false, hideRight: false });
     // Ссылка вида …/index.html#laminate открывает сразу нужный раздел.
     const fromHash = location.hash.slice(1);
     return fromHash === 'criteria' || fromHash === 'laminate' ? { ...saved, tab: fromHash } : saved;
@@ -85,6 +85,19 @@ function App() {
     return () => window.removeEventListener('resize', measure);
   }, [ui]);
   useEffect(() => { store(STATE_KEY, st); }, [st]);
+
+  // Боковые панели сворачиваются ручками на их границах и клавишами [ и ] — остаётся только центр.
+  const panels = { hideLeft: !!ui.hideLeft, hideRight: !!ui.hideRight, toggle: (key) => setUi((u) => ({ ...u, [key]: !u[key] })) };
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) || document.querySelector('dialog[open]')) return;
+      // e.code не зависит от раскладки: на русской эти клавиши — «х» и «ъ»
+      if (e.code === 'BracketLeft') panels.toggle('hideLeft');
+      else if (e.code === 'BracketRight') panels.toggle('hideRight');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const part = (key) => (v) => setSt((s) => ({ ...s, [key]: typeof v === 'function' ? v(s[key]) : v }));
   const scaleBy = (k) => setUi((u) => ({ ...u, scale: Math.min(1.6, Math.max(0.7, +(u.scale * k).toFixed(3))) }));
@@ -134,10 +147,10 @@ function App() {
       <main>
         <CriteriaTab
           active={ui.tab === 'criteria'} materials={st.materials} setMaterials={part('materials')} options={st.options} setOptions={part('options')}
-          state={st.crit} setState={part('crit')} rem={rem} theme={ui.theme}
+          state={st.crit} setState={part('crit')} rem={rem} theme={ui.theme} panels={panels}
         />
         <LaminateTab
-          active={ui.tab === 'laminate'} materials={st.materials} state={st.lam} setState={part('lam')} rem={rem}
+          active={ui.tab === 'laminate'} materials={st.materials} state={st.lam} setState={part('lam')} rem={rem} panels={panels}
         />
       </main>
       <About dialogRef={about} />

@@ -5,7 +5,7 @@ import { MATERIALS, PROPS, materialById } from '../core/materials.js';
 import { surfaceBounds } from '../core/bounds.js';
 import { contour } from '../core/contour.js';
 import { SurfaceView } from '../viz/surface3d.js';
-import { Tex, Num, Panel, StatusIcon, fmt, niceTicks, tickDigits, linear, useSize, clamp } from './common.jsx';
+import { Tex, Num, Panel, Gutter, StatusIcon, fmt, niceTicks, tickDigits, linear, useSize, clamp } from './common.jsx';
 
 const AXES = [
   { tex: '\\sigma_1', name: 'σ₁' },
@@ -184,7 +184,7 @@ function CriterionRow({ item, focus, visible, F, onToggle, onFocus, options, set
 
 const MODE_LEGEND = ['ft', 'fc', 'mt', 'mc', 'ms'];
 
-export function CriteriaTab({ active, materials, setMaterials, options, setOptions, state, setState, rem, theme }) {
+export function CriteriaTab({ active, materials, setMaterials, options, setOptions, state, setState, rem, theme, panels }) {
   const set = (patch) => setState((s) => ({ ...s, ...patch }));
   const m = materialById(materials, state.materialId);
   const o = options;
@@ -241,7 +241,7 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
   };
 
   return (
-    <div class="tab tab-criteria" hidden={!active}>
+    <div class={`tab tab-criteria ${panels.hideLeft ? 'hide-left' : ''} ${panels.hideRight ? 'hide-right' : ''}`} hidden={!active}>
       <div class="col col-left">
         <MaterialPicker materials={materials} materialId={state.materialId} setMaterialId={pickMaterial} setMaterials={setMaterials} />
         <Panel title="Критерии прочности" aside={<span class="head-hint">показатель <Tex>F</Tex> в точке</span>} class="panel-grow">
@@ -259,7 +259,9 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
         </Panel>
       </div>
 
-      <div class="col col-scene">
+      <Gutter side="left" hidden={panels.hideLeft} onToggle={() => panels.toggle('hideLeft')} />
+
+      <div class="col col-mid col-scene">
         <div class="scene-wrap">
           <div class="scene-head">
             <div>
@@ -298,7 +300,8 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
         </div>
       </div>
 
-      <div class="col col-sections">
+      <Gutter side="right" hidden={panels.hideRight} onToggle={() => panels.toggle('hideRight')} />
+      <div class="col col-end col-sections">
         <div class="probe-bar" title="Точку можно перетаскивать на срезах: каждый срез проходит через неё">
           <span class="probe-bar-title">Точка, МПа</span>
           {AXES.map((a, i) => (

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { MODAL_CRITERIA, DEFAULT_OPTIONS, criterionById } from '../core/criteria.js';
 import { materialById } from '../core/materials.js';
 import { simulate, sampleAt } from '../core/progressive.js';
-import { Tex, Num, Panel, Segmented, StatusIcon, fmt, fmtAuto, niceTicks, tickDigits, linear, useSize, clamp } from './common.jsx';
+import { Tex, Num, Panel, Gutter, Segmented, StatusIcon, fmt, fmtAuto, niceTicks, tickDigits, linear, useSize, clamp } from './common.jsx';
 import { StackView } from './stack-view.jsx';
 
 const LOAD = [
@@ -382,7 +382,7 @@ function StiffnessMeters({ now, initial }) {
   );
 }
 
-export function LaminateTab({ active, materials, state, setState, rem }) {
+export function LaminateTab({ active, materials, state, setState, rem, panels }) {
   const set = (patch) => setState((s) => ({ ...s, ...patch }));
   const [hover, setHover] = useState(null);
   const plies = useMemo(
@@ -410,7 +410,9 @@ export function LaminateTab({ active, materials, state, setState, rem }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [active, pb.playing]);
 
+  const tabClass = `tab tab-laminate ${panels.hideLeft ? 'hide-left' : ''} ${panels.hideRight ? 'hide-right' : ''}`;
   const left = (
+    <>
     <div class="col col-left">
       <LayupEditor plies={state.plies} setPlies={(p) => set({ plies: p })} materials={materials} hover={hover} onHover={setHover} />
       <LoadEditor load={state.load} setLoad={(l) => set({ load: l })} />
@@ -440,13 +442,15 @@ export function LaminateTab({ active, materials, state, setState, rem }) {
           : 'Задаётся сила: слой разрушился — деформация растёт скачком при той же нагрузке.'}</p>
       </Panel>
     </div>
+    <Gutter side="left" hidden={panels.hideLeft} onToggle={() => panels.toggle('hideLeft')} />
+    </>
   );
 
   if (!result) {
     return (
-      <div class="tab tab-laminate" hidden={!active}>
+      <div class={tabClass} hidden={!active}>
         {left}
-        <div class="col col-main"><div class="empty">Задайте нагрузку: хотя бы одна составляющая должна быть ненулевой.</div></div>
+        <div class="col col-mid col-main"><div class="empty">Задайте нагрузку: хотя бы одна составляющая должна быть ненулевой.</div></div>
       </div>
     );
   }
@@ -460,9 +464,9 @@ export function LaminateTab({ active, materials, state, setState, rem }) {
   const m0 = stages[0].moduli;
 
   return (
-    <div class="tab tab-laminate" hidden={!active}>
+    <div class={tabClass} hidden={!active}>
       {left}
-      <div class="col col-main">
+      <div class="col col-mid col-main">
         <div class="stats">
           <Stat label="Первое разрушение" value={first ? fmt(first.lam * sign, 0) : '—'} unit="МПа" sub={first ? `${plyName(result, first.failures[0].ply)}${first.failures.length > 1 ? ' и др.' : ''}: ${first.failures[0].kind === 'fiber' ? 'волокно' : 'матрица'}` : ''} />
           <Stat label="Предел прочности" value={fmt(ultimate.lam * sign, 0)} unit="МПа" sub={`${STRAIN[lead].name} = ${fmt(ultimate.eps[lead] * 100, 2)} %`} />
@@ -492,7 +496,8 @@ export function LaminateTab({ active, materials, state, setState, rem }) {
           <EventLog result={result} pos={pb.pos} setPos={pb.setPos} />
         </Panel>
       </div>
-      <div class="col col-right">
+      <Gutter side="right" hidden={panels.hideRight} onToggle={() => panels.toggle('hideRight')} />
+      <div class="col col-end col-right">
         <Panel title="Пакет" aside={<span class="head-hint">{plies.length} сл. · {fmt(plies.reduce((a, p) => a + p.h, 0), 2)} мм</span>} class="stack-panel">
           <StackView plies={plies} states={states} critical={critical} hover={hover} onHover={setHover} rem={rem} />
         </Panel>

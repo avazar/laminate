@@ -171,9 +171,28 @@ a.tool-btn svg { width: 1.25rem; height: 1.25rem; }
 
 /* ---------- каркас вкладок ---------- */
 main { min-height: 0; }
-.tab { display: grid; gap: 0.7rem; padding: 0.7rem; height: 100%; min-height: 0; }
-.tab-criteria { grid-template-columns: minmax(19rem, 24.5rem) minmax(0, 1fr) minmax(21rem, 29rem); }
-.tab-laminate { grid-template-columns: minmax(20rem, 24rem) minmax(0, 1fr) minmax(19rem, 24.5rem); }
+/* Пять дорожек: левая колонка, ручка, центр, ручка, правая колонка. Свёрнутая колонка получает нулевую ширину;
+   у каждого элемента дорожка задана явно, поэтому скрытая колонка не сдвигает остальные. */
+.tab {
+  display: grid; gap: 0; padding: 0.7rem; height: 100%; min-height: 0;
+  grid-template-columns: var(--side-left) auto minmax(0, 1fr) auto var(--side-right);
+}
+.tab-criteria { --side-left: minmax(19rem, 24.5rem); --side-right: minmax(21rem, 29rem); }
+.tab-laminate { --side-left: minmax(20rem, 24rem); --side-right: minmax(19rem, 24.5rem); }
+.tab.hide-left { --side-left: 0px; }
+.tab.hide-right { --side-right: 0px; }
+.tab > * { grid-row: 1; }
+.tab > .col-left { grid-column: 1; }
+.tab > .gutter-left { grid-column: 2; }
+.tab > .col-mid { grid-column: 3; }
+.tab > .gutter-right { grid-column: 4; }
+.tab > .col-end { grid-column: 5; }
+.tab.hide-left > .col-left, .tab.hide-right > .col-end { display: none; }
+.gutter { display: grid; place-items: center; width: 0.95rem; padding: 0; border: 0; background: none; color: var(--ink-2); }
+.gutter-grip { display: grid; place-items: center; width: 0.74rem; height: 3.6rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); }
+.gutter svg { width: 0.56rem; height: 0.56rem; display: block; }
+.gutter:hover .gutter-grip, .gutter:focus-visible .gutter-grip { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.gutter:focus-visible { outline: none; }
 .col { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; min-height: 0; }
 .col-left, .col-right { overflow-y: auto; scrollbar-width: thin; }
 
@@ -424,6 +443,12 @@ dialog.about::backdrop { background: rgba(8, 12, 16, 0.55); }
 @media (max-width: 1150px) {
   #app { height: auto; }
   .tab { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .tab > * { grid-row: auto; }
+  .tab > .col-left, .tab > .gutter-left, .tab > .col-mid, .tab > .gutter-right, .tab > .col-end { grid-column: 1; }
+  /* колонки стоят друг под другом: ручка — горизонтальная полоска, стрелка повёрнута вверх или вниз */
+  .gutter { width: 100%; height: 1.5rem; }
+  .gutter-grip { width: 3.6rem; height: 0.74rem; }
+  .gutter svg { transform: rotate(90deg); }
   .col-left, .col-right { overflow: visible; }
   .scene-wrap { height: 34rem; flex: none; }
   .section { flex: none; height: 19rem; }

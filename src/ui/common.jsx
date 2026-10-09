@@ -132,6 +132,24 @@ export function Panel({ title, aside, children, class: cls }) {
   );
 }
 
+// Ручка на границе боковой колонки: сворачивает её и разворачивает обратно.
+// Стрелка смотрит туда, куда уедет панель; у свёрнутой — обратно.
+export function Gutter({ side, hidden, onToggle }) {
+  const name = side === 'left' ? 'левую' : 'правую';
+  const key = side === 'left' ? '[' : ']';
+  const pointsLeft = (side === 'left') !== hidden;
+  return (
+    <button
+      type="button" class={`gutter gutter-${side}`} aria-expanded={!hidden} onClick={onToggle}
+      aria-label={`${hidden ? 'Показать' : 'Свернуть'} ${name} панель`} title={`${hidden ? 'Показать' : 'Свернуть'} ${name} панель — клавиша ${key}`}
+    >
+      <span class="gutter-grip">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d={pointsLeft ? 'M6.5 1.5L3 5l3.5 3.5' : 'M3.5 1.5L7 5 3.5 8.5'} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      </span>
+    </button>
+  );
+}
+
 // Значок состояния: статус никогда не передаётся одним цветом.
 export function StatusIcon({ kind }) {
   if (kind === 'ok') return <svg class="ico ico-ok" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>;
