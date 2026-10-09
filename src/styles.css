@@ -172,7 +172,7 @@ a.tool-btn svg { width: 1.25rem; height: 1.25rem; }
 /* ---------- каркас вкладок ---------- */
 main { min-height: 0; }
 .tab { display: grid; gap: 0.7rem; padding: 0.7rem; height: 100%; min-height: 0; }
-.tab-criteria { grid-template-columns: minmax(19rem, 23.5rem) minmax(0, 1fr) minmax(21rem, 29rem); }
+.tab-criteria { grid-template-columns: minmax(19rem, 24.5rem) minmax(0, 1fr) minmax(21rem, 29rem); }
 .tab-laminate { grid-template-columns: minmax(20rem, 24rem) minmax(0, 1fr) minmax(19rem, 24.5rem); }
 .col { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; min-height: 0; }
 .col-left, .col-right { overflow-y: auto; scrollbar-width: thin; }
@@ -254,10 +254,12 @@ input[type='checkbox'] { accent-color: var(--ink); width: 1.05rem; height: 1.05r
 .crit { border-top: 1px solid var(--line); }
 .crit:first-child { border-top: 0; }
 .crit.is-focus { background: var(--surface-2); margin-inline: -0.85rem; padding-inline: 0.85rem; }
-.crit-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.55rem; padding-block: 0.38rem; }
+.crit-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.55rem 0.8rem; padding-block: 0.38rem; }
 .crit-toggle { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
-.crit-key { width: 2.1rem; height: 0.9rem; flex: none; }
-.crit-name { border: 0; background: none; padding: 0; text-align: left; font-size: 0.98rem; }
+.crit-key { width: 1.8rem; height: 0.78rem; flex: none; }
+/* длинное слово в названии не должно доходить до шкалы: шрифт чуть меньше, шкала и образец линии — уже */
+.crit-name { border: 0; background: none; padding: 0; text-align: left; font-size: 0.9rem; line-height: 1.25; }
+.crit-verdict .meter { width: 3.3rem; }
 .crit-name:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .is-focus .crit-name { font-weight: 600; }
 .is-off .crit-name, .is-off .crit-verdict { color: var(--muted); }
