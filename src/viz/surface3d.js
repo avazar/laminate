@@ -15,6 +15,8 @@ const N = 64; // разбиение грани куба, из которого �
 
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const tex = (s) => katex.renderToString(s, { throwOnError: false, output: 'html' });
+const AXIS_LABELS = ['\\sigma_1', '\\sigma_2', '\\tau_{12}'].map(tex);
+const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function frameOf(m) {
   const k = { s1: Math.max(m.s1p, m.s1m), s2: Math.max(m.s2p, m.s2m), t: m.t12 };
@@ -208,8 +210,15 @@ export class SurfaceView {
     this.controls.addEventListener('start', () => { if (this.controls.autoRotate) { this.controls.autoRotate = false; this.onAutoRotateStop && this.onAutoRotateStop(); } });
     this.controls.addEventListener('change', () => { this.dirty = true; });
 
-    this.groups = { surfaces: new THREE.Group(), lines: new THREE.Group(), topo: new THREE.Group(), frame: new THREE.Group(), probe: new THREE.Group() };
-    Object.values(this.groups).forEach((g) => this.scene.add(g));
+    // Поверхности, срезы и горизонтали строятся в нормированных осях и лежат в группе world. Когда нормирование
+    // выключено, группа сжимается по осям до реальных соотношений прочностей. Оси, засечки и точка живут отдельно,
+    // в мировых координатах, иначе стрелки и шарики сплющились бы вместе с телом.
+    this.groups = { surfaces: new THREE.Group(), lines: new THREE.Group(), topo: new THREE.Group(), cross: new THREE.Group(), frame: new THREE.Group(), ball: new THREE.Group() };
+    this.world = new THREE.Group();
+    this.world.add(this.groups.surfaces, this.groups.lines, this.groups.topo, this.groups.cross);
+    this.scene.add(this.world, this.groups.frame, this.groups.ball);
+    this.sc = new THREE.Vector3(1, 1, 1); // текущий масштаб world по осям сцены
+    this.anim = null;
     this.geometries = new Map();
     this.fatMaterials = new Set();
     this.labelItems = [];
@@ -224,6 +233,7 @@ export class SurfaceView {
     const loop = () => {
       this.raf = requestAnimationFrame(loop);
       if (!this.active || !this.size.w) return;
+      if (this.anim) this.stepAnimation(performance.now());
       const moved = this.controls.update();
       if (moved || this.dirty) {
         this.dirty = false;
@@ -269,7 +279,34 @@ export class SurfaceView {
     }
   }
 
-  // p: { m, options, list: [{ criterion, color, dash }], focusId, colorByMode, bounds, sections, probe, probeFailed, topo }
+  // Масштаб группы world: единица при нормировании; без него все оси приводятся к общему масштабу в МПа,
+  // так что наибольшая прочность сохраняет свой размер на сцене, а остальные оси сжимаются.
+  scaleFor(normalize, frame) {
+    if (normalize) return new THREE.Vector3(1, 1, 1);
+    const { k } = frame;
+    const K = Math.max(k.s1, k.s2, k.t);
+    return new THREE.Vector3(k.s1 / K, (k.t / K) * (L.x / L.y), (k.s2 / K) * (L.x / L.z));
+  }
+
+  setScale(v) {
+    this.sc.copy(v);
+    this.world.scale.copy(v);
+  }
+
+  // Плавный переход между нормированным и реальным видом. Интерполяция геометрическая:
+  // масштаб меняется в десятки раз, и линейная выглядела бы как рывок в начале.
+  stepAnimation(now) {
+    const { from, to, t0, dur } = this.anim;
+    const t = Math.min(1, (now - t0) / dur);
+    const e = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+    this.setScale(new THREE.Vector3(from.x * (to.x / from.x) ** e, from.y * (to.y / from.y) ** e, from.z * (to.z / from.z) ** e));
+    if (t >= 1) this.anim = null;
+    this.rebuildOverlay();
+    this.placeBall();
+    this.fit(false);
+  }
+
+  // p: { m, options, list: [{ criterion, color }], focusId, colorByMode, normalize, bounds, sections, probe, probeFailed, topo, theme }
   update(p) {
     const prev = this.state;
     this.state = p;
@@ -285,8 +322,19 @@ export class SurfaceView {
       this.idsKey = ids;
       this.rebuildSurfaces(p, frame);
     }
+    // масштаб осей: первый показ и смена материала — сразу, переключение галочки — плавно
+    const target = this.scaleFor(p.normalize, frame);
+    let scaleJumped = false;
+    if (prev.normalize !== undefined && p.normalize !== prev.normalize && !reducedMotion) {
+      this.anim = { from: this.sc.clone(), to: target, t0: performance.now(), dur: 800 };
+    } else if (!this.anim && !this.sc.equals(target)) {
+      this.setScale(target);
+      scaleJumped = true;
+    } else if (this.anim) {
+      this.anim.to = target;
+    }
     const boundsKey = JSON.stringify(p.bounds);
-    if (boundsKey !== this.boundsKey || themeChanged) {
+    if (boundsKey !== this.boundsKey || themeChanged || scaleJumped) {
       const first = !this.boundsKey;
       this.boundsKey = boundsKey;
       this.rebuildFrame(p, frame);
@@ -371,11 +419,8 @@ export class SurfaceView {
     }
   }
 
+  // Габаритный ящик в нормированных осях; всё, что рисуется в мировых координатах, строит rebuildOverlay.
   rebuildFrame(p, frame) {
-    this.clear(this.groups.frame);
-    this.labels.textContent = '';
-    this.labelItems = [];
-    const ink = cssVar('--scene-axis'), faint = cssVar('--scene-cage');
     const { lo, hi } = p.bounds;
     const pad = 1.14;
     const a = frame.toScene(lo[0] * pad, lo[1] * pad, lo[2] * pad), b = frame.toScene(hi[0] * pad, hi[1] * pad, hi[2] * pad);
@@ -386,21 +431,43 @@ export class SurfaceView {
     max[1] = Math.max(max[1], 0.8 * L.y);
     min[2] = Math.min(min[2], -0.8 * L.z);
     this.box = { min, max };
+    this.rebuildOverlay();
+  }
 
-    // сетка «пола» под телом
+  toWorld(v) { return [v[0] * this.sc.x, v[1] * this.sc.y, v[2] * this.sc.z]; }
+
+  // Оси, сетка пола, засечки прочностей и подписи — в мировых координатах, с учётом текущего масштаба осей.
+  rebuildOverlay() {
+    const p = this.state, frame = this.frame;
+    if (!this.box || !frame) return;
+    this.clear(this.groups.frame);
+    this.labels.textContent = '';
+    this.labelItems = [];
+    const ink = cssVar('--scene-axis'), faint = cssVar('--scene-cage');
+    const lo = this.toWorld(this.box.min), hi = this.toWorld(this.box.max);
+    // Без нормирования тело становится иглой; оси при этом не должны выродиться в точки.
+    const TIP = 0.42, TAIL = 0.24;
+    const x0 = Math.min(lo[0], -TAIL), x1 = Math.max(hi[0], TIP);
+    const y0 = Math.min(lo[1], -TAIL), y1 = Math.max(hi[1], TIP);
+    const zPlus = Math.max(hi[2], TAIL), zMinus = Math.min(lo[2], -TIP); // σ₂ растёт в сторону −z
+    // в габарит для камеры входят и подписи у концов осей
+    this.worldBox = { min: [x0, y0, zMinus - 0.25], max: [x1 + 0.3, y1 + 0.25, zPlus] };
+
+    // сетка «пола» с квадратными ячейками: одинаковый шаг по обеим осям в координатах сцены
     const floor = [];
-    const stepsX = 8, stepsZ = 6;
-    for (let i = 0; i <= stepsX; i++) { const x = min[0] + ((max[0] - min[0]) * i) / stepsX; floor.push(x, min[1], min[2], x, min[1], max[2]); }
-    for (let i = 0; i <= stepsZ; i++) { const z = min[2] + ((max[2] - min[2]) * i) / stepsZ; floor.push(min[0], min[1], z, max[0], min[1], z); }
+    const step = (x1 - x0) / 8;
+    for (let i = 0; i <= 8; i++) floor.push(x0 + i * step, y0, zMinus, x0 + i * step, y0, zPlus);
+    for (let z = zMinus; z < zPlus - 1e-9; z += step) floor.push(x0, y0, z, x1, y0, z);
+    floor.push(x0, y0, zPlus, x1, y0, zPlus);
     const fg = new THREE.BufferGeometry();
     fg.setAttribute('position', new THREE.Float32BufferAttribute(floor, 3));
     this.groups.frame.add(new THREE.LineSegments(fg, new THREE.LineBasicMaterial({ color: faint, transparent: true, opacity: 0.7 })));
 
     // оси через начало координат
     const axes = [
-      { from: [min[0], 0, 0], to: [max[0], 0, 0], label: '\\sigma_1' },
-      { from: [0, 0, max[2]], to: [0, 0, min[2]], label: '\\sigma_2' },
-      { from: [0, min[1], 0], to: [0, max[1], 0], label: '\\tau_{12}' },
+      { from: [x0, 0, 0], to: [x1, 0, 0], label: AXIS_LABELS[0] },
+      { from: [0, 0, zPlus], to: [0, 0, zMinus], label: AXIS_LABELS[1] },
+      { from: [0, y0, 0], to: [0, y1, 0], label: AXIS_LABELS[2] },
     ];
     for (const ax of axes) {
       this.groups.frame.add(this.fatLine([...ax.from, ...ax.to], ink, 1.6, { order: 2 }));
@@ -409,7 +476,7 @@ export class SurfaceView {
       cone.position.set(...ax.to);
       cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
       this.groups.frame.add(cone);
-      this.addLabel(new THREE.Vector3(...ax.to).addScaledVector(dir, 0.16), tex(ax.label), 'scene-axis-label');
+      this.addLabel(new THREE.Vector3(...ax.to).addScaledVector(dir, 0.16), ax.label, 'scene-axis-label');
     }
     // засечки прочностей
     const m = p.m;
@@ -418,12 +485,13 @@ export class SurfaceView {
       [[0, -m.s2m, 0], -m.s2m], [[0, 0, m.t12], m.t12], [[0, 0, -m.t12], -m.t12],
     ];
     for (const [s, value] of marks) {
-      const pos = frame.toScene(...s);
+      const pos = this.toWorld(frame.toScene(...s));
       const dot = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 8), new THREE.MeshBasicMaterial({ color: ink }));
       dot.position.set(...pos);
       this.groups.frame.add(dot);
       this.addLabel(new THREE.Vector3(...pos), String(value).replace('-', '−'), 'scene-tick-label');
     }
+    this.dirty = true;
   }
 
   addLabel(position, html, cls) {
@@ -431,42 +499,62 @@ export class SurfaceView {
     el.className = cls;
     el.innerHTML = html;
     this.labels.appendChild(el);
-    this.labelItems.push({ el, position });
+    this.labelItems.push({ el, position, w: el.offsetWidth, h: el.offsetHeight });
   }
 
+  // Подписи ставятся по проекции своих точек. Если подписи наезжают друг на друга (без нормирования засечки
+  // σ₂ и τ₁₂ собираются у начала координат), остаётся та, что добавлена раньше: сначала оси, затем засечки.
   placeLabels() {
     const v = new THREE.Vector3();
-    for (const { el, position } of this.labelItems) {
+    const placed = [];
+    for (const { el, position, w, h } of this.labelItems) {
       v.copy(position).project(this.camera);
-      const hidden = v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05;
+      const x = ((v.x + 1) / 2) * this.size.w, y = ((1 - v.y) / 2) * this.size.h;
+      const rect = [x - w / 2 - 2, y - h / 2 - 2, x + w / 2 + 2, y + h / 2 + 2];
+      const hidden = v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05
+        || placed.some((q) => rect[0] < q[2] && rect[2] > q[0] && rect[1] < q[3] && rect[3] > q[1]);
       el.style.display = hidden ? 'none' : '';
-      el.style.transform = `translate(-50%, -50%) translate(${((v.x + 1) / 2) * this.size.w}px, ${((1 - v.y) / 2) * this.size.h}px)`;
+      if (hidden) continue;
+      placed.push(rect);
+      el.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
     }
   }
 
+  // Перекрестие через точку — в нормированных осях (сжимается вместе с телом), сам шарик — в мировых.
   rebuildProbe(p, frame) {
-    this.clear(this.groups.probe);
+    this.clear(this.groups.cross);
     const c = frame.toScene(...p.probe);
     const { min, max } = this.box;
     const color = p.probeFailed ? cssVar('--fiber') : cssVar('--scene-axis');
     const cross = [min[0], c[1], c[2], max[0], c[1], c[2], c[0], min[1], c[2], c[0], max[1], c[2], c[0], c[1], min[2], c[0], c[1], max[2]];
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(cross, 3));
-    this.groups.probe.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 })));
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.055, 24, 16), new THREE.MeshBasicMaterial({ color }));
-    ball.position.set(...c);
-    ball.renderOrder = 5;
-    this.groups.probe.add(ball);
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.075, 24, 16), new THREE.MeshBasicMaterial({ color: cssVar('--surface'), side: THREE.BackSide }));
-    halo.position.set(...c);
-    this.groups.probe.add(halo);
+    this.groups.cross.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 })));
+    this.placeBall();
   }
 
-  // Камера ставится так, чтобы габаритный ящик целиком помещался в кадр.
+  placeBall() {
+    const p = this.state;
+    if (!p.probe || !this.frame) return;
+    this.clear(this.groups.ball);
+    const c = this.toWorld(this.frame.toScene(...p.probe));
+    const color = p.probeFailed ? cssVar('--fiber') : cssVar('--scene-axis');
+    // на тонком теле (без нормирования) шарик меньше, чтобы не закрывать его
+    const k = Math.max(0.4, Math.min(1, 2.5 * Math.min(this.sc.x, this.sc.y, this.sc.z)));
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.055 * k, 24, 16), new THREE.MeshBasicMaterial({ color }));
+    ball.position.set(...c);
+    ball.renderOrder = 5;
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.075 * k, 24, 16), new THREE.MeshBasicMaterial({ color: cssVar('--surface'), side: THREE.BackSide }));
+    halo.position.set(...c);
+    this.groups.ball.add(ball, halo);
+    this.dirty = true;
+  }
+
+  // Камера ставится так, чтобы габаритный ящик (уже в мировых координатах) целиком помещался в кадр.
   fit(resetView) {
-    if (!this.box) return;
+    if (!this.worldBox) return;
     this.fitted = true;
-    const { min, max } = this.box;
+    const { min, max } = this.worldBox;
     const center = new THREE.Vector3((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2);
     const radius = 0.5 * Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
     const vfov = (this.camera.fov * Math.PI) / 180;
@@ -475,7 +563,8 @@ export class SurfaceView {
     const dir = resetView ? new THREE.Vector3(0.5, 0.46, 0.73).normalize() : this.camera.position.clone().sub(this.controls.target).normalize();
     this.controls.target.copy(center);
     this.camera.position.copy(center).addScaledVector(dir, dist);
-    this.controls.minDistance = dist * 0.45;
+    // без нормирования тело тонкое — разрешаем подойти к нему ближе
+    this.controls.minDistance = dist * (this.state.normalize === false ? 0.14 : 0.45);
     this.controls.maxDistance = dist * 2.2;
     this.dirty = true;
   }

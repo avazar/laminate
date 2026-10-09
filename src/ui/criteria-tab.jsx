@@ -214,6 +214,8 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
 
   const indices = useMemo(() => Object.fromEntries(CRITERIA.map((c) => [c.id, c.index(probe[0], probe[1], probe[2], m, o)])), [probe[0], probe[1], probe[2], m, o]);
 
+  // Нормирование осей сцены на прочности; без него видны реальные соотношения σ̄₁ : σ̄₂ : τ̄₁₂.
+  const normalize = state.normalize !== false;
   const sceneRef = useRef(null);
   const view = useRef(null);
   useEffect(() => {
@@ -225,10 +227,10 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
   useEffect(() => { view.current.setAutoRotate(state.autoRotate && active); }, [state.autoRotate, active]);
   useEffect(() => {
     view.current.update({
-      m, options: o, list, focusId, colorByMode: state.colorByMode, topo: state.topo, bounds, sections, probe,
+      m, options: o, list, focusId, colorByMode: state.colorByMode, topo: state.topo, normalize, bounds, sections, probe,
       probeFailed: focusId ? indices[focusId] >= 1 : false, theme,
     });
-  }, [m, o, list, focusId, state.colorByMode, state.topo, bounds, sections, theme, probe[0], probe[1], probe[2]]);
+  }, [m, o, list, focusId, state.colorByMode, state.topo, normalize, bounds, sections, theme, probe[0], probe[1], probe[2]]);
 
   const focus = focusId && criterionById(focusId);
   const setProbe = (p) => set({ probe: p });
@@ -265,6 +267,9 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
               <p class="scene-sub">{m.name}{focus ? ` · ${focus.title || `критерий ${focus.name}`}` : ''}</p>
             </div>
             <div class="scene-tools">
+              <label class="check" title="Каждая ось отнесена к своей прочности. Снимите галочку, чтобы увидеть реальные соотношения прочностей">
+                <input type="checkbox" id="opt-normalize" checked={normalize} onChange={() => set({ normalize: !normalize })} />нормирование
+              </label>
               <label class="check"><input type="checkbox" id="opt-modes" checked={state.colorByMode} onChange={() => set({ colorByMode: !state.colorByMode })} />режимы разрушения</label>
               <label class="check"><input type="checkbox" id="opt-topo" checked={state.topo} onChange={() => set({ topo: !state.topo })} />горизонтали</label>
               <label class="check"><input type="checkbox" id="opt-rotate" checked={state.autoRotate} onChange={() => set({ autoRotate: !state.autoRotate })} />вращение</label>
@@ -288,7 +293,7 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
                 ))}
               </ul>
             )}
-            <span class="scene-hint">оси нормированы на прочности · мышь — поворот, колесо — масштаб</span>
+            <span class="scene-hint">{normalize ? 'оси нормированы на прочности' : 'масштаб по всем осям одинаковый'} · мышь — поворот, колесо — масштаб</span>
           </div>
         </div>
       </div>
