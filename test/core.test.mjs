@@ -183,6 +183,23 @@ test('Хашин: при α = 1 сдвиг выключает слои 0° и 45
   close(u(0), u(1), 1e-12);
 });
 
+test('сосуд давления: пара ±φ после разрушения матрицы несёт нагрузку 1 : 2 только при tg²φ = 2', () => {
+  const vessel = (phi, m) => run([{ material: m, angle: phi, h: 1 }, { material: m, angle: -phi, h: 1 }], [0.5, 1, 0], 'hashin', 'load');
+  const exact = (Math.atan(Math.SQRT2) * 180) / Math.PI;
+  for (const m of MATERIALS) {
+    const r = vessel(exact, m);
+    // нитяная оценка: σy = σ̄₁⁺·sin²φ = 2σ̄₁⁺/3
+    close(r.ultimate.lam, (2 * m.s1p) / 3, 1e-9);
+    assert.equal(r.collapse.reason, 'allFailed');
+    assert.equal(r.events[0].failures[0].kind, 'matrix');
+    // при 55° пара нитяных слоёв — механизм: расчёт заканчивается на разрушении матрицы
+    const off = vessel(55, m);
+    assert.equal(off.collapse.reason, 'mechanism');
+    assert.equal(off.events.length, 1);
+    assert.ok(off.ultimate.lam < 0.4 * r.ultimate.lam);
+  }
+});
+
 test('гибридный пакет считается', () => {
   const plies = [{ material: carbon, angle: 0, h: 1 }, { material: glass, angle: 90, h: 2 }, { material: aramid, angle: 45, h: 1 }, { material: aramid, angle: -45, h: 1 }];
   const r = run(plies, [1, 0.5, 0], 'maxStrain', 'load');

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { MODAL_CRITERIA, DEFAULT_OPTIONS, criterionById } from '../core/criteria.js';
 import { materialById } from '../core/materials.js';
 import { simulate, sampleAt } from '../core/progressive.js';
-import { Tex, Num, Panel, Gutter, Segmented, StatusIcon, fmt, fmtAuto, niceTicks, tickDigits, linear, useSize, clamp } from './common.jsx';
+import { Tex, Num, Panel, Gutter, Segmented, StatusIcon, fmt, fmtAngle, fmtAuto, niceTicks, tickDigits, linear, useSize, clamp } from './common.jsx';
 import { StackView } from './stack-view.jsx';
 
 const LOAD = [
@@ -16,13 +16,17 @@ const STRAIN = [
   { tex: '\\varepsilon_y', name: 'εy', color: 'var(--series-2)', dash: '9 6' },
   { tex: '\\gamma_{xy}', name: 'γxy', color: 'var(--series-3)', dash: '2 6' },
 ];
+const VESSEL_ANGLE = (Math.atan(Math.SQRT2) * 180) / Math.PI;
 const LAYUPS = [
   { label: '[0]', angles: [0] },
   { label: '[0/90]', angles: [0, 90] },
   { label: '[±45]', angles: [45, -45] },
   { label: '[0/±45/90]', angles: [0, 45, -45, 90] },
   { label: '[0₂/±45]', angles: [0, 0, 45, -45] },
-  { label: '[±55]', angles: [55, -55] },
+  // Равновесный угол нитяной модели для сосуда давления: tg²φ = σy/σx = 2, φ = arctg √2 ≈ 54,74°.
+  // Угол хранится точно: пара нитяных слоёв ±φ несёт только нагрузку с отношением tg²φ, и при 55° ровно
+  // такая же пара под нагрузкой 1 : 2 после разрушения матрицы — механизм.
+  { label: '[±54,7]', angles: [VESSEL_ANGLE, -VESSEL_ANGLE], title: 'Равновесный угол для сосуда давления: tg²φ = 2' },
 ];
 const LOADS = [
   { label: 'растяжение x', load: [1, 0, 0] },
@@ -38,13 +42,13 @@ const MAX_PLIES = 16;
 
 let nextId = 1;
 export const makePly = (materialId, angle, h = 0.2) => ({ id: `p${Date.now().toString(36)}${nextId++}`, materialId, angle, h });
-const angleText = (a) => String(a).replace('-', '−');
+const angleText = fmtAngle;
 
 function layupCode(plies) {
   const out = [];
   for (let i = 0; i < plies.length; i++) {
     const a = plies[i].angle, b = plies[i + 1] && plies[i + 1].angle;
-    if (a > 0 && b === -a) { out.push(`±${a}`); i++; } else out.push(angleText(a));
+    if (a > 0 && b === -a) { out.push(`±${angleText(a)}`); i++; } else out.push(angleText(a));
   }
   return `[${out.join('/')}]`;
 }
@@ -57,14 +61,14 @@ function LayupEditor({ plies, setPlies, materials, hover, onHover }) {
   return (
     <Panel title="Укладка" aside={<span class="layup-code mono">{layupCode(plies)}</span>} class="panel-grow">
       <div class="chips" role="group" aria-label="Готовые укладки">
-        {LAYUPS.map((l) => <button type="button" class="chip" key={l.label} onClick={() => setPlies(l.angles.map((a) => makePly(lastMat, a)))}>{l.label}</button>)}
+        {LAYUPS.map((l) => <button type="button" class="chip" key={l.label} title={l.title} onClick={() => setPlies(l.angles.map((a) => makePly(lastMat, a)))}>{l.label}</button>)}
       </div>
       <div class="ply-table" role="table" aria-label="Слои пакета">
         <div class="ply-row ply-head" role="row"><span>№</span><span>φ, °</span><span>материал</span><span>h, мм</span><span /></div>
         {plies.map((p, i) => (
           <div class={`ply-row ${hover === i ? 'is-hover' : ''}`} role="row" key={p.id} onPointerEnter={() => onHover(i)} onPointerLeave={() => onHover(null)}>
             <span class="ply-n mono">{i + 1}</span>
-            <Num id={`angle-${p.id}`} value={p.angle} step={5} min={-90} max={90} onChange={(v) => update(p.id, { angle: Math.round(v) })} label={`Угол армирования слоя ${i + 1}`} />
+            <Num id={`angle-${p.id}`} value={p.angle} step={5} min={-90} max={90} digits={2} onChange={(v) => update(p.id, { angle: Math.round(v * 100) / 100 })} label={`Угол армирования слоя ${i + 1}`} />
             <div class="mat-seg" role="group" aria-label={`Материал слоя ${i + 1}`}>
               {materials.map((m) => (
                 <button type="button" key={m.id} class={`mat-chip mat-${m.id}`} aria-pressed={m.id === p.materialId} title={m.name} onClick={() => update(p.id, { materialId: m.id })}>{m.short}</button>

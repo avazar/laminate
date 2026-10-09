@@ -26,6 +26,8 @@ export function fmtAuto(v) {
   return fmt(v, a >= 100 ? 0 : a >= 10 ? 1 : a >= 1 ? 2 : 3);
 }
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+// Угол армирования: до двух знаков, без хвоста нулей (54,74; −45).
+export const fmtAngle = (a) => String(+a.toFixed(2)).replace('-', '−').replace('.', ',');
 
 // ---------- оси графиков ----------
 export function niceTicks(min, max, target = 6) {

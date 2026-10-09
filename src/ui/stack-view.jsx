@@ -1,7 +1,7 @@
 // Картинка пакета в косоугольной проекции: слои разнесены по высоте, штриховка показывает направление волокон.
 // Ось x пакета горизонтальна (как на схеме нагружения), ось y уходит вправо-вверх; первый слой списка — верхний.
 import { useRef } from 'preact/hooks';
-import { useSize } from './common.jsx';
+import { useSize, fmtAngle } from './common.jsx';
 
 const KX = 0.5, KY = 0.4; // проекция единичного отрезка оси y на экран
 
@@ -85,7 +85,7 @@ export function StackView({ plies, states, critical, hover, onHover, rem }) {
                 })}
                 {/* вспышка в момент разрушения: key по состоянию создаёт элемент заново, и анимация проигрывается */}
                 {state !== 'intact' && <polygon key={state} class="ply-burst" points={pts(c)} />}
-                {(gap >= 0.95 * rem || N === 1) && <text class="ply-label" x={label[0] + 0.45 * rem} y={label[1] + 0.45 * rem} dy="0.34em">{String(ply.angle).replace('-', '−')}°</text>}
+                {(gap >= 0.95 * rem || N === 1) && <text class="ply-label" x={label[0] + 0.45 * rem} y={label[1] + 0.45 * rem} dy="0.34em">{fmtAngle(ply.angle)}°</text>}
               </g>
             );
           })}
