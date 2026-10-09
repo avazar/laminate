@@ -90,6 +90,26 @@ test('F — обратный запас: точка σ/F лежит на пов�
   }
 });
 
+test('аппроксимационный критерий: волокно — по σ₁, матрица — эллипс в плоскости σ₂–τ₁₂', () => {
+  const c = criterionById('vasiliev');
+  for (const m of MATERIALS) {
+    const lhs = (s2, t) => s2 * (1 / m.s2p - 1 / m.s2m) + (s2 * s2) / (m.s2p * m.s2m) + (t / m.t12) ** 2;
+    // точки с F = 1 удовлетворяют условию для матрицы
+    for (const [s2, t] of [[0.6 * m.s2p, 0.5 * m.t12], [-0.7 * m.s2m, 0.4 * m.t12], [-0.2 * m.s2m, -m.t12]]) {
+      const F = c.index(0, s2, t, m, DEFAULT_OPTIONS);
+      close(lhs(s2 / F, t / F), 1, 1e-12);
+    }
+    // наибольшая прочность на сдвиг — при σ₂ = −(σ̄₂⁻ − σ̄₂⁺)/2 и равна τ̄₁₂(σ̄₂⁺ + σ̄₂⁻)/(2√(σ̄₂⁺σ̄₂⁻))
+    const tmax = (m.t12 * (m.s2p + m.s2m)) / (2 * Math.sqrt(m.s2p * m.s2m));
+    close(c.index(0, -(m.s2m - m.s2p) / 2, tmax, m, DEFAULT_OPTIONS), 1, 1e-12);
+    assert.ok(tmax > m.t12);
+    // σ₁ на условие для матрицы не влияет, а волокно проверяется только по σ₁
+    const a = c.modes(0.5 * m.s1p, 0.5 * m.s2p, 0.5 * m.t12, m, DEFAULT_OPTIONS), b = c.modes(-0.5 * m.s1m, 0.5 * m.s2p, 0.5 * m.t12, m, DEFAULT_OPTIONS);
+    close(a.mt, b.mt, 1e-15);
+    close(c.modes(m.s1p, 0, 0.9 * m.t12, m, DEFAULT_OPTIONS).ft, 1, 1e-12);
+  }
+});
+
 test('Хашин с τ̄₂₃ ≠ σ̄₂⁻/2 сохраняет прочность на поперечное сжатие', () => {
   const o = { ...DEFAULT_OPTIONS, hashinSt: 60 };
   close(criterionById('hashin').index(0, -carbon.s2m, 0, carbon, o), 1, 1e-12);
@@ -120,7 +140,7 @@ test('сжатие и сдвиг однонаправленного слоя', (
 });
 
 test('перекрёстный пакет [0/90]: сначала матрица 90°, предел — волокно 0° при σ̄₁⁺·h̄', () => {
-  for (const control of ['strain', 'load']) for (const crit of ['maxStress', 'maxStrain', 'hashin']) {
+  for (const control of ['strain', 'load']) for (const crit of ['maxStress', 'vasiliev', 'maxStrain', 'hashin']) {
     const r = run(layup(carbon, [0, 90]), [1, 0, 0], crit, control);
     assert.equal(r.first.failures[0].ply, 1);
     assert.equal(r.first.failures[0].kind, 'matrix');

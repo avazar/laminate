@@ -18,7 +18,7 @@ const PLANES = [
   { key: 's2t', ax: 1, ay: 2, fixed: 0 },
 ];
 // Вторичное кодирование для критериев, цвета которых ближе друг к другу: штрих.
-export const DASH = { maxStrain: '9 6', tsaiHill: '2 6', hoffman: '14 5 2 5' };
+export const DASH = { vasiliev: '18 5', maxStrain: '9 6', tsaiHill: '2 6', hoffman: '14 5 2 5' };
 
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -137,7 +137,7 @@ function CriterionRow({ item, focus, visible, F, onToggle, onFocus, options, set
     <li class={`crit ${focus ? 'is-focus' : ''} ${visible ? '' : 'is-off'}`}>
       <div class="crit-row">
         <label class="crit-toggle" title={visible ? 'Скрыть' : 'Показать'}>
-          <input type="checkbox" id={`show-${c.id}`} checked={visible} onChange={onToggle} aria-label={`Показывать критерий ${c.name}`} />
+          <input type="checkbox" id={`show-${c.id}`} checked={visible} onChange={onToggle} aria-label={`Показывать на графиках: ${c.name}`} />
           <svg class="crit-key" viewBox="0 0 34 14" aria-hidden="true">
             <line x1="2" x2="32" y1="7" y2="7" stroke={item.color} stroke-width="3.4" stroke-linecap="round" stroke-dasharray={DASH[c.id] ? DASH[c.id].split(' ').map((q) => q / 1.7).join(' ') : undefined} />
           </svg>
@@ -262,7 +262,7 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
           <div class="scene-head">
             <div>
               <h2 class="scene-title">Поверхность прочности</h2>
-              <p class="scene-sub">{m.name}{focus ? ` · критерий ${focus.name}` : ''}</p>
+              <p class="scene-sub">{m.name}{focus ? ` · ${focus.title || `критерий ${focus.name}`}` : ''}</p>
             </div>
             <div class="scene-tools">
               <label class="check"><input type="checkbox" id="opt-modes" checked={state.colorByMode} onChange={() => set({ colorByMode: !state.colorByMode })} />режимы разрушения</label>
@@ -275,7 +275,8 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
           <div class="scene-foot">
             {focus && focus.modal && state.colorByMode ? (
               <ul class="legend">
-                {MODE_LEGEND.map((k) => <li key={k}><span class="swatch" style={{ background: `var(--mode-${k})` }} />{MODES[k].label}</li>)}
+                {/* в легенде только те режимы, которые есть у выделенного критерия */}
+                {MODE_LEGEND.filter((k) => k in focus.modes(0, 0, 0, m, o)).map((k) => <li key={k}><span class="swatch" style={{ background: `var(--mode-${k})` }} />{MODES[k].label}</li>)}
               </ul>
             ) : (
               <ul class="legend">

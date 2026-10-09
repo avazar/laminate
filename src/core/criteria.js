@@ -50,6 +50,17 @@ function maxStrainModes(s1, s2, t, m) {
   };
 }
 
+// Аппроксимационный критерий по В. В. Васильеву: волокно и матрица проверяются раздельно.
+// Волокно — по максимальным напряжениям; матрица — полиномом второй степени F(σ₂, τ₁₂) = 1:
+//   σ₂(1/σ̄₂⁺ − 1/σ̄₂⁻) + σ₂²/(σ̄₂⁺σ̄₂⁻) + (τ₁₂/τ̄₁₂)² = 1.
+const vasilievMatrix = (s2, t, m) => quadIndex((s2 * s2) / (m.s2p * m.s2m) + (t / m.t12) ** 2, s2 * (1 / m.s2p - 1 / m.s2m));
+
+function vasilievModes(s1, s2, t, m) {
+  const matrix = vasilievMatrix(s2, t, m);
+  // Условие для матрицы одно; по знаку σ₂ оно только подписывается как растяжение или сжатие.
+  return { ft: pos(s1, m.s1p), fc: pos(-s1, m.s1m), mt: s2 >= 0 ? matrix : 0, mc: s2 < 0 ? matrix : 0 };
+}
+
 function hashinModes(s1, s2, t, m, o) {
   const sh = t / m.t12;
   const st = o.hashinSt || m.s2m / 2;
@@ -99,6 +110,16 @@ export const CRITERIA = [
       '|\\tau_{12}|\\le\\bar\\tau_{12}',
     ],
     note: 'Три независимых условия: каждое напряжение сравнивается со своей прочностью. Поверхность — параллелепипед, взаимодействия напряжений нет.',
+  },
+  {
+    id: 'vasiliev', name: 'Аппроксимационный (по Васильеву)', short: 'Аппроксимационный', title: 'аппроксимационный критерий', modal: true,
+    modes: vasilievModes,
+    index: (s1, s2, t, m) => Math.max(s1 > 0 ? s1 / m.s1p : -s1 / m.s1m, vasilievMatrix(s2, t, m)),
+    tex: [
+      '\\sigma_1\\le\\bar\\sigma_1^{+}\\ \\ (\\sigma_1>0),\\qquad |\\sigma_1|\\le\\bar\\sigma_1^{-}\\ \\ (\\sigma_1<0)',
+      '\\sigma_2\\left(\\dfrac{1}{\\bar\\sigma_2^{+}}-\\dfrac{1}{\\bar\\sigma_2^{-}}\\right)+\\dfrac{\\sigma_2^{2}}{\\bar\\sigma_2^{+}\\bar\\sigma_2^{-}}+\\left(\\dfrac{\\tau_{12}}{\\bar\\tau_{12}}\\right)^{2}=1',
+    ],
+    note: 'Критерий из книги В. В. Васильева. Волокно проверяется по максимальным напряжениям, матрица — отдельно, полиномом по σ₂ и τ₁₂: в плоскости σ₂–τ₁₂ это эллипс, смещённый в сторону сжатия. Наибольшая прочность на сдвиг получается при σ₂ = −(σ̄₂⁻ − σ̄₂⁺)/2.',
   },
   {
     id: 'tsaiWu', name: 'Цая–Ву', short: 'Цая–Ву', modal: false,

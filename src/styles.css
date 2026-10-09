@@ -29,6 +29,7 @@
 
   /* критерии — категориальная палитра, проверена на различимость (в т. ч. при дальтонизме) */
   --c-maxStress: #2a78d6;
+  --c-vasiliev: #3bb9ed;
   --c-tsaiWu: #eb6834;
   --c-hashin: #1baf7a;
   --c-maxStrain: #4a3aa7;
@@ -81,6 +82,7 @@
   --line: rgba(255, 255, 255, 0.12);
   --line-strong: rgba(255, 255, 255, 0.3);
   --c-maxStress: #3987e5;
+  --c-vasiliev: #46aec5;
   --c-tsaiWu: #d95926;
   --c-hashin: #199e70;
   --c-maxStrain: #6250b2;
@@ -200,8 +202,11 @@ input[type='checkbox'] { accent-color: var(--ink); width: 1.05rem; height: 1.05r
 .seg-btn + .seg-btn { border-left: 1px solid var(--line); }
 .seg-btn:hover { background: var(--surface-2); }
 .seg-btn[aria-pressed='true'] { background: var(--ink); color: var(--surface); }
-.seg-wide { display: flex; width: 100%; }
-.seg-wide .seg-btn { flex: 1 1 auto; padding-inline: 0.35rem; font-size: 0.82rem; }
+/* четыре варианта в две строки */
+.seg-grid { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+.seg-grid .seg-btn { padding-inline: 0.35rem; font-size: 0.84rem; }
+.seg-grid .seg-btn:nth-child(odd) { border-left: 0; }
+.seg-grid .seg-btn:nth-child(n + 3) { border-top: 1px solid var(--line); }
 .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .chip { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 0.2rem 0.7rem; font-size: 0.82rem; font-family: var(--font-mono); }
 .chip:hover { background: var(--surface-2); }

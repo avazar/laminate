@@ -417,7 +417,7 @@ export function LaminateTab({ active, materials, state, setState, rem }) {
       <Panel title="Расчёт">
         <div class="field">
           <span class="field-label">критерий</span>
-          <Segmented class="seg-wide" label="Критерий разрушения слоя" value={criterion.id} onChange={(v) => set({ criterionId: v })} options={MODAL_CRITERIA.map((c) => ({ value: c.id, label: c.short }))} />
+          <Segmented class="seg-grid" label="Критерий разрушения слоя" value={criterion.id} onChange={(v) => set({ criterionId: v })} options={MODAL_CRITERIA.map((c) => ({ value: c.id, label: c.short }))} />
         </div>
         {criterion.id === 'hashin' && (
           <div class="field">
