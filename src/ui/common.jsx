@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import katex from 'katex';
+import { tr, getLang } from '../i18n.js';
 
 // ---------- формулы ----------
 const texCache = new Map();
@@ -14,11 +15,12 @@ export function Tex({ children, block, class: cls }) {
 }
 
 // ---------- числа ----------
-// Русская запись: десятичная запятая, настоящий минус.
+// Запись чисел: настоящий минус; десятичный знак — запятая в русской версии, точка в английской.
+const decimal = () => (getLang() === 'ru' ? ',' : '.');
 export function fmt(v, digits = 0) {
   if (!Number.isFinite(v)) return '—';
   const r = Math.abs(v) < 0.5 * 10 ** -digits ? 0 : v;
-  return r.toFixed(digits).replace('-', '−').replace('.', ',');
+  return r.toFixed(digits).replace('-', '−').replace('.', decimal());
 }
 // Столько знаков, чтобы было около трёх значащих цифр.
 export function fmtAuto(v) {
@@ -27,7 +29,7 @@ export function fmtAuto(v) {
 }
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 // Угол армирования: до двух знаков, без хвоста нулей (54,74; −45).
-export const fmtAngle = (a) => String(+a.toFixed(2)).replace('-', '−').replace('.', ',');
+export const fmtAngle = (a) => String(+a.toFixed(2)).replace('-', '−').replace('.', decimal());
 
 // ---------- оси графиков ----------
 export function niceTicks(min, max, target = 6) {
@@ -137,13 +139,12 @@ export function Panel({ title, aside, children, class: cls }) {
 // Ручка на границе боковой колонки: сворачивает её и разворачивает обратно.
 // Стрелка смотрит туда, куда уедет панель; у свёрнутой — обратно.
 export function Gutter({ side, hidden, onToggle }) {
-  const name = side === 'left' ? 'левую' : 'правую';
-  const key = side === 'left' ? '[' : ']';
+  const label = tr(`gutter.${hidden ? 'show' : 'hide'}${side === 'left' ? 'Left' : 'Right'}`);
   const pointsLeft = (side === 'left') !== hidden;
   return (
     <button
       type="button" class={`gutter gutter-${side}`} aria-expanded={!hidden} onClick={onToggle}
-      aria-label={`${hidden ? 'Показать' : 'Свернуть'} ${name} панель`} title={`${hidden ? 'Показать' : 'Свернуть'} ${name} панель — клавиша ${key}`}
+      aria-label={label} title={label + tr('gutter.key', { key: side === 'left' ? '[' : ']' })}
     >
       <span class="gutter-grip">
         <svg viewBox="0 0 10 10" aria-hidden="true"><path d={pointsLeft ? 'M6.5 1.5L3 5l3.5 3.5' : 'M3.5 1.5L7 5 3.5 8.5'} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>

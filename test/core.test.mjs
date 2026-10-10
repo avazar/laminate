@@ -10,7 +10,7 @@ const [glass, aramid, carbon] = MATERIALS;
 const close = (a, b, rel = 1e-9, msg) => assert.ok(Math.abs(a - b) <= rel * Math.max(1, Math.abs(a), Math.abs(b)), msg || `${a} ≠ ${b}`);
 const layup = (m, angles) => angles.map((angle) => ({ material: m, angle, h: 1 }));
 
-test('B̄ = T2ᵀ·D·T2 совпадает с формулами конспекта', () => {
+test('B̄ = T2ᵀ·D·T2 совпадает с формулами в замкнутом виде', () => {
   for (const m of MATERIALS) for (const phi of [0, 17, 30, 45, 60, 90, -33, 123]) {
     const a = plyB(m, phi), b = plyBClosedForm(m, phi);
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) close(a[i][j], b[i][j], 1e-10, `φ=${phi} [${i}${j}]`);

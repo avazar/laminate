@@ -13,18 +13,19 @@
 //          'load'   — мягкое нагружение (нагрузка удерживается, деформация скачком растёт).
 
 import { T2, plyD, mulMV, laminateA, laminateModuli, solveLoad, dot } from './mech.js';
-import { MODES, DEFAULT_OPTIONS, modeList } from './criteria.js';
+import { DEFAULT_OPTIONS, modeList } from './criteria.js';
 
 const TOL = 1e-6;
 
-// Подпись режима для протокола. В критерии Хашина условия для матрицы (и для волокна при растяжении, если α > 0)
-// включают сдвиг; когда разрушение вызвано в основном им, честнее так и написать.
+// Ключ подписи режима для протокола (тексты — в словаре, mode.<ключ>). В критериях с эллипсом для матрицы
+// (и для волокна при растяжении, если α > 0) условие включает сдвиг; когда разрушение вызвано в основном им,
+// честнее так и написать: 'ms' — «матрица, сдвиг», 'ftShear' — «волокно, растяжение со сдвигом».
 function failureLabel(mode, s, m) {
   const shear = Math.abs(s[2]) / m.t12;
-  if (mode === 'mt' && shear > Math.abs(s[1]) / m.s2p) return 'матрица, сдвиг';
-  if (mode === 'mc' && shear > Math.abs(s[1]) / m.s2m) return 'матрица, сдвиг';
-  if (mode === 'ft' && shear > Math.abs(s[0]) / m.s1p) return 'волокно, растяжение со сдвигом';
-  return MODES[mode].label;
+  if (mode === 'mt' && shear > Math.abs(s[1]) / m.s2p) return 'ms';
+  if (mode === 'mc' && shear > Math.abs(s[1]) / m.s2m) return 'ms';
+  if (mode === 'ft' && shear > Math.abs(s[0]) / m.s1p) return 'ftShear';
+  return mode;
 }
 
 function plyCheck(ply, state, eps1, criterion, options) {

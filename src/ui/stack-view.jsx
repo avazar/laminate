@@ -2,6 +2,7 @@
 // Ось x пакета горизонтальна (как на схеме нагружения), ось y уходит вправо-вверх; первый слой списка — верхний.
 import { useRef } from 'preact/hooks';
 import { useSize, fmtAngle } from './common.jsx';
+import { tr } from '../i18n.js';
 
 const KX = 0.5, KY = 0.4; // проекция единичного отрезка оси y на экран
 
@@ -50,7 +51,7 @@ export function StackView({ plies, states, critical, hover, onHover, rem }) {
   return (
     <div class="stack" ref={ref}>
       {w > 60 && h > 60 && (
-        <svg width={w} height={h} class="stack-svg" role="img" aria-label="Схема пакета: слои и направления волокон">
+        <svg width={w} height={h} class="stack-svg" role="img" aria-label={tr('stack.aria')}>
           <defs>
             <marker id="stack-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
               <path d="M0 1L9 5L0 9z" class="arrow-head" />

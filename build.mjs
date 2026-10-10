@@ -41,12 +41,12 @@ await writeFile(`${outdir}/index.html`, html.replace('href="app.css"', `href="ap
 // В сборку входит чужой код и шрифты; их лицензии требуют распространять текст лицензии вместе с ними.
 const thirdParty = [
   ['three.js', 'three'],
-  ['KaTeX (включая шрифты KaTeX)', 'katex'],
+  ['KaTeX (including the KaTeX fonts)', 'katex'],
   ['Preact', 'preact'],
-  ['IBM Plex Sans (пакет Fontsource)', '@fontsource/ibm-plex-sans'],
-  ['IBM Plex Mono (пакет Fontsource)', '@fontsource/ibm-plex-mono'],
+  ['IBM Plex Sans (Fontsource package)', '@fontsource/ibm-plex-sans'],
+  ['IBM Plex Mono (Fontsource package)', '@fontsource/ibm-plex-mono'],
 ];
-let notices = 'Сторонние компоненты в составе сайта\n';
+let notices = 'Third-party components bundled with this site\n';
 for (const [title, pkg] of thirdParty) {
   const { version, license } = JSON.parse(await readFile(`node_modules/${pkg}/package.json`, 'utf8'));
   const text = await readFile(`node_modules/${pkg}/LICENSE`, 'utf8');

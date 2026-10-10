@@ -11,12 +11,12 @@
 import { nu12 } from './mech.js';
 
 export const MODES = {
-  ft: { kind: 'fiber', label: 'волокно, растяжение' },
-  fc: { kind: 'fiber', label: 'волокно, сжатие' },
-  mt: { kind: 'matrix', label: 'матрица, растяжение поперёк волокон' },
-  mc: { kind: 'matrix', label: 'матрица, сжатие поперёк волокон' },
-  ms: { kind: 'matrix', label: 'матрица, сдвиг' },
-  int: { kind: null, label: 'сочетание напряжений' },
+  ft: { kind: 'fiber' }, // волокно, растяжение
+  fc: { kind: 'fiber' }, // волокно, сжатие
+  mt: { kind: 'matrix' }, // матрица, растяжение поперёк волокон
+  mc: { kind: 'matrix' }, // матрица, сжатие поперёк волокон
+  ms: { kind: 'matrix' }, // матрица, сдвиг
+  int: { kind: null }, // сочетание напряжений
 };
 
 export const DEFAULT_OPTIONS = {
@@ -99,9 +99,10 @@ const maxOf = (o) => {
   return best;
 };
 
+// Названия и пояснения к критериям — в словаре src/i18n.js, ключи crit.<id>.*
 export const CRITERIA = [
   {
-    id: 'maxStress', name: 'Максимальных напряжений', short: 'Макс. напряжений', modal: true,
+    id: 'maxStress', modal: true,
     modes: maxStressModes,
     index: (s1, s2, t, m) => Math.max(s1 > 0 ? s1 / m.s1p : -s1 / m.s1m, s2 > 0 ? s2 / m.s2p : -s2 / m.s2m, Math.abs(t) / m.t12),
     tex: [
@@ -109,31 +110,27 @@ export const CRITERIA = [
       '-\\bar\\sigma_2^{-}\\le\\sigma_2\\le\\bar\\sigma_2^{+}',
       '|\\tau_{12}|\\le\\bar\\tau_{12}',
     ],
-    note: 'Три независимых условия: каждое напряжение сравнивается со своей прочностью. Поверхность — параллелепипед, взаимодействия напряжений нет.',
   },
   {
-    // ­ — мягкий перенос: если колонка всё же окажется узкой, слово разорвётся по слогу, а не налезет на шкалу
-    id: 'vasiliev', name: 'Аппроксима­ционный (по Васильеву)', short: 'Аппроксимационный', title: 'аппроксимационный критерий', modal: true,
+    id: 'vasiliev', modal: true,
     modes: vasilievModes,
     index: (s1, s2, t, m) => Math.max(s1 > 0 ? s1 / m.s1p : -s1 / m.s1m, vasilievMatrix(s2, t, m)),
     tex: [
       '\\sigma_1\\le\\bar\\sigma_1^{+}\\ \\ (\\sigma_1>0),\\qquad |\\sigma_1|\\le\\bar\\sigma_1^{-}\\ \\ (\\sigma_1<0)',
       '\\sigma_2\\left(\\dfrac{1}{\\bar\\sigma_2^{+}}-\\dfrac{1}{\\bar\\sigma_2^{-}}\\right)+\\dfrac{\\sigma_2^{2}}{\\bar\\sigma_2^{+}\\bar\\sigma_2^{-}}+\\left(\\dfrac{\\tau_{12}}{\\bar\\tau_{12}}\\right)^{2}=1',
     ],
-    note: 'Критерий из книги В. В. Васильева. Волокно проверяется по максимальным напряжениям, матрица — отдельно, полиномом по σ₂ и τ₁₂: в плоскости σ₂–τ₁₂ это эллипс, смещённый в сторону сжатия. Наибольшая прочность на сдвиг получается при σ₂ = −(σ̄₂⁻ − σ̄₂⁺)/2.',
   },
   {
-    id: 'tsaiWu', name: 'Цая–Ву', short: 'Цая–Ву', modal: false,
+    id: 'tsaiWu', modal: false,
     index: (s1, s2, t, m, o) => polynomial(s1, s2, t, m, o.f12),
     tex: [
       'F_1\\sigma_1+F_2\\sigma_2+F_{11}\\sigma_1^2+F_{22}\\sigma_2^2+F_{66}\\tau_{12}^2+2F_{12}\\sigma_1\\sigma_2=1',
       'F_1=\\dfrac{1}{\\bar\\sigma_1^{+}}-\\dfrac{1}{\\bar\\sigma_1^{-}},\\quad F_{11}=\\dfrac{1}{\\bar\\sigma_1^{+}\\bar\\sigma_1^{-}},\\quad F_{66}=\\dfrac{1}{\\bar\\tau_{12}^{\\,2}}',
       'F_{12}=f_{12}\\sqrt{F_{11}F_{22}},\\quad -1<f_{12}<1',
     ],
-    note: 'Полный полином второй степени, поверхность — эллипсоид. Коэффициент F₁₂ из одноосных опытов не определяется; обычно принимают f₁₂ = −0,5.',
   },
   {
-    id: 'hashin', name: 'Хашина', short: 'Хашина', modal: true,
+    id: 'hashin', modal: true,
     modes: hashinModes,
     index: (s1, s2, t, m, o) => maxOf(hashinModes(s1, s2, t, m, o)),
     tex: [
@@ -141,33 +138,29 @@ export const CRITERIA = [
       '\\sigma_2>0:\\ \\left(\\dfrac{\\sigma_2}{\\bar\\sigma_2^{+}}\\right)^{2}+\\left(\\dfrac{\\tau_{12}}{\\bar\\tau_{12}}\\right)^{2}=1',
       '\\sigma_2<0:\\ \\left(\\dfrac{\\sigma_2}{2\\bar\\tau_{23}}\\right)^{2}+\\left[\\left(\\dfrac{\\bar\\sigma_2^{-}}{2\\bar\\tau_{23}}\\right)^{2}-1\\right]\\dfrac{\\sigma_2}{\\bar\\sigma_2^{-}}+\\left(\\dfrac{\\tau_{12}}{\\bar\\tau_{12}}\\right)^{2}=1',
     ],
-    note: 'Четыре отдельных условия — для волокна и матрицы, при растяжении и сжатии. Критерий сам сообщает, что именно разрушилось.',
   },
   {
-    id: 'maxStrain', name: 'Максимальных деформаций', short: 'Макс. деформаций', modal: true,
+    id: 'maxStrain', modal: true,
     modes: maxStrainModes,
     index: (s1, s2, t, m) => maxOf(maxStrainModes(s1, s2, t, m)),
     tex: [
       '-\\bar\\varepsilon_1^{-}\\le\\varepsilon_1\\le\\bar\\varepsilon_1^{+},\\quad -\\bar\\varepsilon_2^{-}\\le\\varepsilon_2\\le\\bar\\varepsilon_2^{+},\\quad |\\gamma_{12}|\\le\\bar\\gamma_{12}',
       '\\varepsilon_1=\\dfrac{\\sigma_1}{E_1}-\\nu_{12}\\dfrac{\\sigma_2}{E_2},\\qquad \\bar\\varepsilon_1^{\\pm}=\\dfrac{\\bar\\sigma_1^{\\pm}}{E_1}',
     ],
-    note: 'То же, что максимальные напряжения, но в деформациях. В осях напряжений прямоугольник превращается в параллелограмм из-за коэффициентов Пуассона.',
   },
   {
-    id: 'tsaiHill', name: 'Цая–Хилла', short: 'Цая–Хилла', modal: false,
+    id: 'tsaiHill', modal: false,
     index: tsaiHill,
     tex: [
       '\\left(\\dfrac{\\sigma_1}{\\bar\\sigma_1}\\right)^{2}-\\dfrac{\\sigma_1\\sigma_2}{\\bar\\sigma_1^{\\,2}}+\\left(\\dfrac{\\sigma_2}{\\bar\\sigma_2}\\right)^{2}+\\left(\\dfrac{\\tau_{12}}{\\bar\\tau_{12}}\\right)^{2}=1',
     ],
-    note: 'Обобщение критерия Мизеса на ортотропный материал. Линейных членов нет, поэтому σ̄₁ и σ̄₂ берутся по знаку действующего напряжения — поверхность сшита из четырёх кусков эллипсоидов.',
   },
   {
-    id: 'hoffman', name: 'Хоффмана', short: 'Хоффмана', modal: false,
+    id: 'hoffman', modal: false,
     index: (s1, s2, t, m) => polynomial(s1, s2, t, m, null),
     tex: [
       'F_1\\sigma_1+F_2\\sigma_2+F_{11}\\sigma_1^2+F_{22}\\sigma_2^2+F_{66}\\tau_{12}^2-F_{11}\\sigma_1\\sigma_2=1',
     ],
-    note: 'Частный случай Цая–Ву с фиксированным взаимодействием 2F₁₂ = −F₁₁, то есть Цай–Хилл с линейными членами для разной прочности на растяжение и сжатие.',
   },
 ];
 

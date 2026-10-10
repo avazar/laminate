@@ -1,11 +1,12 @@
 // Вкладка «Слой»: предельные поверхности критериев и их срезы.
 import { useEffect, useMemo, useRef } from 'preact/hooks';
-import { CRITERIA, criterionById, MODES } from '../core/criteria.js';
+import { CRITERIA, criterionById } from '../core/criteria.js';
 import { MATERIALS, PROPS, materialById } from '../core/materials.js';
 import { surfaceBounds } from '../core/bounds.js';
 import { contour } from '../core/contour.js';
 import { SurfaceView } from '../viz/surface3d.js';
 import { Tex, Num, Panel, Gutter, StatusIcon, fmt, niceTicks, tickDigits, linear, useSize, clamp } from './common.jsx';
+import { tr, getLang } from '../i18n.js';
 
 const AXES = [
   { tex: '\\sigma_1', name: 'σ₁' },
@@ -60,20 +61,20 @@ function SectionPlot({ plane, lines, list, focusId, range, probe, setProbe, rem 
       <div class="section-head">
         <span class="section-title"><Tex>{`${AXES[ax].tex}\\;\\text{–}\\;${AXES[ay].tex}`}</Tex></span>
         <label class="section-fixed">
-          <span>при <Tex>{AXES[fixed].tex}</Tex> =</span>
+          <span>{tr('section.at')} <Tex>{AXES[fixed].tex}</Tex> =</span>
           <input
             type="range" id={`fixed-${plane.key}`} min={range.lo[fixed]} max={range.hi[fixed]} step={stepFixed} value={probe[fixed]}
-            aria-label={`${AXES[fixed].name}, МПа`}
+            aria-label={`${AXES[fixed].name}, ${tr('unit.MPa')}`}
             onInput={(e) => { const next = probe.slice(); next[fixed] = parseFloat(e.target.value); setProbe(next); }}
           />
-          <output class="mono">{fmt(probe[fixed], 0)} МПа</output>
+          <output class="mono">{fmt(probe[fixed], 0)} {tr('unit.MPa')}</output>
         </label>
       </div>
       <div class="plot" ref={ref}>
         {ready && (
           <svg
             width={w} height={h} class="plot-svg section-svg" role="img"
-            aria-label={`Срез предельных поверхностей плоскостью ${AXES[fixed].name} = ${fmt(probe[fixed])} МПа`}
+            aria-label={tr('section.aria', { axis: AXES[fixed].name, v: fmt(probe[fixed]), unit: tr('unit.MPa') })}
             onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); drag(e); }}
             onPointerMove={(e) => { if (e.buttons & 1 || e.pointerType === 'touch') drag(e); }}
           >
@@ -95,8 +96,8 @@ function SectionPlot({ plane, lines, list, focusId, range, probe, setProbe, rem 
             <circle class="probe" cx={px} cy={py} r={0.42 * rem} />
           </svg>
         )}
-        <span class="axis-title axis-title-x"><Tex>{AXES[ax].tex}</Tex>, МПа</span>
-        <span class="axis-title axis-title-y"><Tex>{AXES[ay].tex}</Tex>, МПа</span>
+        <span class="axis-title axis-title-x"><Tex>{AXES[ax].tex}</Tex>, {tr('unit.MPa')}</span>
+        <span class="axis-title axis-title-y"><Tex>{AXES[ay].tex}</Tex>, {tr('unit.MPa')}</span>
       </div>
     </div>
   );
@@ -108,21 +109,21 @@ function MaterialPicker({ materials, materialId, setMaterialId, setMaterials }) 
   const changed = PROPS.some((p) => m[p.key] !== base[p.key]);
   const setProp = (key, v) => setMaterials(materials.map((q) => (q.id === m.id ? { ...q, [key]: v } : q)));
   return (
-    <Panel title="Материал слоя" aside={changed && <button type="button" class="link-btn" onClick={() => setMaterials(materials.map((q) => (q.id === m.id ? { ...base } : q)))}>как в таблице</button>}>
-      <div class="mat-cards" role="group" aria-label="Материал">
+    <Panel title={tr('material.panel')} aside={changed && <button type="button" class="link-btn" title={tr('material.resetTitle')} onClick={() => setMaterials(materials.map((q) => (q.id === m.id ? { ...base } : q)))}>{tr('material.reset')}</button>}>
+      <div class="mat-cards" role="group" aria-label={tr('material.group')}>
         {materials.map((q) => (
           <button type="button" key={q.id} class={`mat-card mat-${q.id}`} aria-pressed={q.id === m.id} onClick={() => setMaterialId(q.id)}>
             <span class="mat-swatch" aria-hidden="true" />
-            <span class="mat-name">{q.name}</span>
+            <span class="mat-name">{tr(`mat.${q.id}.name`)}</span>
           </button>
         ))}
       </div>
       <div class="props">
         {PROPS.map((p) => (
-          <label class="prop" key={p.key} title={p.label}>
+          <label class="prop" key={p.key} title={tr(`prop.${p.key}`)}>
             <Tex>{p.tex}</Tex>
-            <Num id={`prop-${p.key}`} value={m[p.key]} step={p.key === 'nu21' ? 0.01 : p.unit === 'ГПа' ? 0.5 : 10} min={p.key === 'nu21' ? 0 : 0.1} max={p.key === 'nu21' ? 0.49 : undefined} onChange={(v) => setProp(p.key, v)} label={p.label} />
-            <span class="unit">{p.unit}</span>
+            <Num id={`prop-${p.key}`} value={m[p.key]} step={p.key === 'nu21' ? 0.01 : p.unit === 'GPa' ? 0.5 : 10} min={p.key === 'nu21' ? 0 : 0.1} max={p.key === 'nu21' ? 0.49 : undefined} onChange={(v) => setProp(p.key, v)} label={tr(`prop.${p.key}`)} />
+            <span class="unit">{p.unit && tr(`unit.${p.unit}`)}</span>
           </label>
         ))}
       </div>
@@ -132,18 +133,19 @@ function MaterialPicker({ materials, materialId, setMaterialId, setMaterials }) 
 
 function CriterionRow({ item, focus, visible, F, onToggle, onFocus, options, setOptions, m }) {
   const c = item.criterion;
+  const name = tr(`crit.${c.id}.name`);
   const failed = F >= 1;
   return (
     <li class={`crit ${focus ? 'is-focus' : ''} ${visible ? '' : 'is-off'}`}>
       <div class="crit-row">
-        <label class="crit-toggle" title={visible ? 'Скрыть' : 'Показать'}>
-          <input type="checkbox" id={`show-${c.id}`} checked={visible} onChange={onToggle} aria-label={`Показывать на графиках: ${c.name}`} />
+        <label class="crit-toggle" title={tr(visible ? 'criteria.hide' : 'criteria.show')}>
+          <input type="checkbox" id={`show-${c.id}`} checked={visible} onChange={onToggle} aria-label={tr('criteria.toggle', { name })} />
           <svg class="crit-key" viewBox="0 0 34 14" aria-hidden="true">
             <line x1="2" x2="32" y1="7" y2="7" stroke={item.color} stroke-width="3.4" stroke-linecap="round" stroke-dasharray={DASH[c.id] ? DASH[c.id].split(' ').map((q) => q / 1.7).join(' ') : undefined} />
           </svg>
         </label>
-        <button type="button" class="crit-name" aria-expanded={focus} onClick={onFocus}>{c.name}</button>
-        <span class={`crit-verdict ${failed ? 'is-failed' : ''}`} title={`Запас прочности 1/F = ${fmt(1 / F, 2)}`}>
+        <button type="button" class="crit-name" aria-expanded={focus} onClick={onFocus}>{name}</button>
+        <span class={`crit-verdict ${failed ? 'is-failed' : ''}`} title={tr('criteria.margin', { v: fmt(1 / F, 2) })}>
           <span class="meter" aria-hidden="true"><span class="meter-fill" style={{ width: `${Math.min(F / 1.5, 1) * 100}%`, background: item.color }} /><span class="meter-one" /></span>
           <span class="mono crit-f">{fmt(F, 2)}</span>
           <StatusIcon kind={failed ? 'fiber' : 'ok'} />
@@ -152,12 +154,14 @@ function CriterionRow({ item, focus, visible, F, onToggle, onFocus, options, set
       {focus && (
         <div class="crit-body">
           {c.tex.map((t, i) => <div class="crit-tex" key={i}><Tex block>{t}</Tex></div>)}
-          <p class="note">{c.note}</p>
-          {c.id === 'maxStrain' && <p class="note">Предельные деформации взяты из линейного закона, <Tex>{'\\bar\\varepsilon=\\bar\\sigma/E'}</Tex>. У стеклопластика из таблицы поперечная деформация <Tex>{'\\nu_{21}\\varepsilon_1'}</Tex> исчерпывает <Tex>{'\\bar\\varepsilon_2'}</Tex> раньше, чем <Tex>{'\\sigma_1'}</Tex> достигает <Tex>{'\\bar\\sigma_1'}</Tex>.</p>}
+          <p class="note">{tr(`crit.${c.id}.note`)}</p>
+          {c.id === 'maxStrain' && (getLang() === 'en'
+            ? <p class="note">Ultimate strains follow from the linear law, <Tex>{'\\bar\\varepsilon=\\bar\\sigma/E'}</Tex>. For the glass/epoxy data used here the transverse strain <Tex>{'\\nu_{21}\\varepsilon_1'}</Tex> exhausts <Tex>{'\\bar\\varepsilon_2'}</Tex> before <Tex>{'\\sigma_1'}</Tex> reaches <Tex>{'\\bar\\sigma_1'}</Tex>.</p>
+            : <p class="note">Предельные деформации взяты из линейного закона, <Tex>{'\\bar\\varepsilon=\\bar\\sigma/E'}</Tex>. У стеклопластика с принятыми здесь свойствами поперечная деформация <Tex>{'\\nu_{21}\\varepsilon_1'}</Tex> исчерпывает <Tex>{'\\bar\\varepsilon_2'}</Tex> раньше, чем <Tex>{'\\sigma_1'}</Tex> достигает <Tex>{'\\bar\\sigma_1'}</Tex>.</p>)}
           {c.id === 'tsaiWu' && (
             <label class="param">
               <span><Tex>{'f_{12}'}</Tex> =</span>
-              <input type="range" id="opt-f12" min="-0.95" max="0.95" step="0.05" value={options.f12} onInput={(e) => setOptions({ ...options, f12: parseFloat(e.target.value) })} aria-label="Коэффициент взаимодействия f12" />
+              <input type="range" id="opt-f12" min="-0.95" max="0.95" step="0.05" value={options.f12} onInput={(e) => setOptions({ ...options, f12: parseFloat(e.target.value) })} aria-label={tr('param.f12')} />
               <output class="mono">{fmt(options.f12, 2)}</output>
             </label>
           )}
@@ -165,15 +169,17 @@ function CriterionRow({ item, focus, visible, F, onToggle, onFocus, options, set
             <div class="params">
               <label class="param">
                 <span><Tex>{'\\alpha'}</Tex> =</span>
-                <input type="range" id="opt-alpha" min="0" max="1" step="0.1" value={options.hashinAlpha} onInput={(e) => setOptions({ ...options, hashinAlpha: parseFloat(e.target.value) })} aria-label="Вклад сдвига в разрушение волокна" />
+                <input type="range" id="opt-alpha" min="0" max="1" step="0.1" value={options.hashinAlpha} onInput={(e) => setOptions({ ...options, hashinAlpha: parseFloat(e.target.value) })} aria-label={tr('param.alpha')} />
                 <output class="mono">{fmt(options.hashinAlpha, 1)}</output>
               </label>
               <label class="param">
                 <span><Tex>{'\\bar\\tau_{23}'}</Tex> =</span>
-                <input type="range" id="opt-st" min={Math.round(m.s2m * 0.25)} max={Math.round(m.s2m)} step="1" value={options.hashinSt || m.s2m / 2} onInput={(e) => setOptions({ ...options, hashinSt: parseFloat(e.target.value) })} aria-label="Прочность на поперечный сдвиг" />
-                <output class="mono">{fmt(options.hashinSt || m.s2m / 2, 0)} МПа</output>
+                <input type="range" id="opt-st" min={Math.round(m.s2m * 0.25)} max={Math.round(m.s2m)} step="1" value={options.hashinSt || m.s2m / 2} onInput={(e) => setOptions({ ...options, hashinSt: parseFloat(e.target.value) })} aria-label={tr('param.st')} />
+                <output class="mono">{fmt(options.hashinSt || m.s2m / 2, 0)} {tr('unit.MPa')}</output>
               </label>
-              <p class="note">α = 1 — Хашин (1980), α = 0 — Хашин–Ротем. <Tex>{'\\bar\\tau_{23}'}</Tex> в таблице нет; по умолчанию <Tex>{'\\bar\\sigma_2^{-}/2'}</Tex>, тогда условие сжатия матрицы — эллипс.</p>
+              {getLang() === 'en'
+                ? <p class="note">α = 1 is Hashin (1980), α = 0 is Hashin–Rotem. <Tex>{'\\bar\\tau_{23}'}</Tex> is not among the input data; the default is <Tex>{'\\bar\\sigma_2^{-}/2'}</Tex>, which makes the matrix compression condition an ellipse.</p>
+                : <p class="note">α = 1 — Хашин (1980), α = 0 — Хашин–Ротем. Прочности <Tex>{'\\bar\\tau_{23}'}</Tex> среди исходных данных нет; по умолчанию она равна <Tex>{'\\bar\\sigma_2^{-}/2'}</Tex>, тогда условие сжатия матрицы — эллипс.</p>}
             </div>
           )}
         </div>
@@ -244,7 +250,7 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
     <div class={`tab tab-criteria ${panels.hideLeft ? 'hide-left' : ''} ${panels.hideRight ? 'hide-right' : ''}`} hidden={!active}>
       <div class="col col-left">
         <MaterialPicker materials={materials} materialId={state.materialId} setMaterialId={pickMaterial} setMaterials={setMaterials} />
-        <Panel title="Критерии прочности" aside={<span class="head-hint">показатель <Tex>F</Tex> в точке</span>} class="panel-grow">
+        <Panel title={tr('criteria.panel')} aside={<span class="head-hint">{tr('criteria.hintA')}<Tex>F</Tex>{tr('criteria.hintB')}</span>} class="panel-grow">
           <ul class="crit-list">
             {all.map((item) => (
               <CriterionRow
@@ -255,7 +261,7 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
               />
             ))}
           </ul>
-          <p class="note foot-note"><Tex>F=1</Tex> — точка на предельной поверхности, <Tex>1/F</Tex> — запас прочности при пропорциональном нагружении.</p>
+          <p class="note foot-note"><Tex>F=1</Tex>{tr('criteria.footA')}<Tex>1/F</Tex>{tr('criteria.footB')}</p>
         </Panel>
       </div>
 
@@ -265,17 +271,17 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
         <div class="scene-wrap">
           <div class="scene-head">
             <div>
-              <h2 class="scene-title">Поверхность прочности</h2>
-              <p class="scene-sub">{m.name}{focus ? ` · ${focus.title || `критерий ${focus.name}`}` : ''}</p>
+              <h2 class="scene-title">{tr('scene.title')}</h2>
+              <p class="scene-sub">{tr(`mat.${m.id}.name`)}{focus ? ` · ${tr(`crit.${focus.id}.title`)}` : ''}</p>
             </div>
             <div class="scene-tools">
-              <label class="check" title="Каждая ось отнесена к своей прочности. Снимите галочку, чтобы увидеть реальные соотношения прочностей">
-                <input type="checkbox" id="opt-normalize" checked={normalize} onChange={() => set({ normalize: !normalize })} />нормирование
+              <label class="check" title={tr('scene.normalizeTitle')}>
+                <input type="checkbox" id="opt-normalize" checked={normalize} onChange={() => set({ normalize: !normalize })} />{tr('scene.normalize')}
               </label>
-              <label class="check"><input type="checkbox" id="opt-modes" checked={state.colorByMode} onChange={() => set({ colorByMode: !state.colorByMode })} />режимы разрушения</label>
-              <label class="check"><input type="checkbox" id="opt-topo" checked={state.topo} onChange={() => set({ topo: !state.topo })} />горизонтали</label>
-              <label class="check"><input type="checkbox" id="opt-rotate" checked={state.autoRotate} onChange={() => set({ autoRotate: !state.autoRotate })} />вращение</label>
-              <button type="button" class="ghost-btn" onClick={() => view.current.resetView()}>исходный вид</button>
+              <label class="check"><input type="checkbox" id="opt-modes" checked={state.colorByMode} onChange={() => set({ colorByMode: !state.colorByMode })} />{tr('scene.modes')}</label>
+              <label class="check"><input type="checkbox" id="opt-topo" checked={state.topo} onChange={() => set({ topo: !state.topo })} />{tr('scene.topo')}</label>
+              <label class="check"><input type="checkbox" id="opt-rotate" checked={state.autoRotate} onChange={() => set({ autoRotate: !state.autoRotate })} />{tr('scene.rotate')}</label>
+              <button type="button" class="ghost-btn" onClick={() => view.current.resetView()}>{tr('scene.resetView')}</button>
             </div>
           </div>
           <div class="scene" ref={sceneRef} />
@@ -283,31 +289,31 @@ export function CriteriaTab({ active, materials, setMaterials, options, setOptio
             {focus && focus.modal && state.colorByMode ? (
               <ul class="legend">
                 {/* в легенде только те режимы, которые есть у выделенного критерия */}
-                {MODE_LEGEND.filter((k) => k in focus.modes(0, 0, 0, m, o)).map((k) => <li key={k}><span class="swatch" style={{ background: `var(--mode-${k})` }} />{MODES[k].label}</li>)}
+                {MODE_LEGEND.filter((k) => k in focus.modes(0, 0, 0, m, o)).map((k) => <li key={k}><span class="swatch" style={{ background: `var(--mode-${k})` }} />{tr(`mode.${k}`)}</li>)}
               </ul>
             ) : (
               <ul class="legend">
                 {list.map((it) => (
                   <li key={it.criterion.id}>
                     <svg class="crit-key" viewBox="0 0 34 14" aria-hidden="true"><line x1="2" x2="32" y1="7" y2="7" stroke={it.color} stroke-width="3.4" stroke-linecap="round" stroke-dasharray={DASH[it.criterion.id] ? DASH[it.criterion.id].split(' ').map((q) => q / 1.7).join(' ') : undefined} /></svg>
-                    {it.criterion.short}
+                    {tr(`crit.${it.criterion.id}.short`)}
                   </li>
                 ))}
               </ul>
             )}
-            <span class="scene-hint">{normalize ? 'оси нормированы на прочности' : 'масштаб по всем осям одинаковый'} · мышь — поворот, колесо — масштаб</span>
+            <span class="scene-hint">{tr(normalize ? 'scene.hintNorm' : 'scene.hintReal')} · {tr('scene.hintMouse')}</span>
           </div>
         </div>
       </div>
 
       <Gutter side="right" hidden={panels.hideRight} onToggle={() => panels.toggle('hideRight')} />
       <div class="col col-end col-sections">
-        <div class="probe-bar" title="Точку можно перетаскивать на срезах: каждый срез проходит через неё">
-          <span class="probe-bar-title">Точка, МПа</span>
+        <div class="probe-bar" title={tr('probe.hint')}>
+          <span class="probe-bar-title">{tr('probe.title', { unit: tr('unit.MPa') })}</span>
           {AXES.map((a, i) => (
             <label class="probe-field" key={a.tex}>
               <Tex>{a.tex}</Tex>
-              <Num id={`probe-${i}`} value={Math.round(probe[i])} step={i === 0 ? 50 : 5} min={Math.ceil(range.lo[i])} max={Math.floor(range.hi[i])} onChange={(v) => { const p = probe.slice(); p[i] = v; setProbe(p); }} label={`${a.name}, МПа`} />
+              <Num id={`probe-${i}`} value={Math.round(probe[i])} step={i === 0 ? 50 : 5} min={Math.ceil(range.lo[i])} max={Math.floor(range.hi[i])} onChange={(v) => { const p = probe.slice(); p[i] = v; setProbe(p); }} label={`${a.name}, ${tr('unit.MPa')}`} />
             </label>
           ))}
         </div>

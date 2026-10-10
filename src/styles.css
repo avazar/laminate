@@ -436,6 +436,7 @@ dialog.about::backdrop { background: rgba(8, 12, 16, 0.55); }
 .about p + p, .about ol + p, .about p + ol { margin-top: 0.55rem; }
 .about ol { list-style: decimal; padding-left: 1.3rem; display: flex; flex-direction: column; gap: 0.25rem; }
 .about .note { margin-top: 0.9rem; font-size: 0.82rem; }
+.about .disclaimer { margin-top: 0.8rem; padding-top: 0.7rem; border-top: 1px solid var(--line); font-size: 0.86rem; color: var(--ink-2); }
 .about a { color: inherit; text-underline-offset: 0.18em; }
 .about-foot { display: flex; justify-content: flex-end; margin-top: 1.1rem; }
 
