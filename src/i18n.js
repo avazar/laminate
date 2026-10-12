@@ -23,8 +23,8 @@ export function tr(key, vars) {
 }
 
 const ru = {
-  'app.title': 'Ламинат · лаборатория прочности',
-  'brand.name': 'Ламинат',
+  'app.title': 'Laminate · лаборатория прочности',
+  'brand.name': 'Laminate',
   'brand.sub': 'лаборатория прочности композитов',
   'nav.label': 'Разделы',
   'tab.criteria.title': 'Слой',

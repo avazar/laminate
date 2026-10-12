@@ -1,4 +1,4 @@
-# Ламинат · лаборатория прочности
+# Laminate · лаборатория прочности
 
 [English version below](#laminate--strength-lab)
 
