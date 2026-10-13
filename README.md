@@ -49,7 +49,7 @@ npm test
 - Оси слоя 1–2, оси пакета x–y, ν₂₁ — больший коэффициент Пуассона (E₁ν₁₂ = E₂ν₂₁).
 - Пакет рассматривается в мембранной постановке, без изгиба; порядок слоёв на результат не влияет.
 - Показатель F — величина, обратная запасу прочности: при умножении всех напряжений на 1/F точка попадает на предельную поверхность.
-- Разрушение матрицы переводит слой на нитяную модель (E₂ = G₁₂ = ν = 0), разрушение волокна выключает слой.
+- Разрушение матрицы переводит слой на нитяную модель (E₂ = G₁₂ = ν = 0), разрушение волокна выключает слой. Набранные к моменту разрушения матрицы σ₂ и τ₁₂ по выбору либо сбрасываются до нуля («хрупкая» матрица, по умолчанию), либо остаются на достигнутом уровне и дальше не растут («пластичная»).
 - Между событиями задача линейна, поэтому диаграмма строится точно, без шагов по нагрузке. «Жёсткое» нагружение удерживает деформацию в направлении нагрузки, «мягкое» — саму нагрузку.
 - Для критерия максимальных деформаций предельные деформации приняты ε̄ = σ̄/E.
 - В критерии Хашина прочность на поперечный сдвиг τ̄₂₃ принята равной σ̄₂⁻/2. Параметр α (вклад сдвига в разрушение волокна) на вкладке «Слой» по умолчанию равен 1, в расчёте пакета — 0, чтобы сдвиг не выключал слой целиком.
@@ -97,7 +97,7 @@ npm test
 - Ply axes 1–2, laminate axes x–y. Note the index convention: ν₂₁ is the major Poisson's ratio (E₁ν₁₂ = E₂ν₂₁).
 - The laminate is a membrane, bending is neglected; the stacking order does not affect the result.
 - The index F is the reciprocal of the safety factor: multiplying all stresses by 1/F puts the point on the failure surface.
-- Matrix failure switches the ply to the netting model (E₂ = G₁₂ = ν = 0); fiber failure removes the ply.
+- Matrix failure switches the ply to the netting model (E₂ = G₁₂ = ν = 0); fiber failure removes the ply. The σ₂ and τ₁₂ reached at matrix failure either drop to zero (“brittle” matrix, the default) or stay at that level and stop growing (“plastic” matrix).
 - Between events the problem is linear, so the curve is exact, with no load stepping. Strain control holds the strain in the load direction, load control holds the load.
 - For the maximum strain criterion the ultimate strains are taken as ε̄ = σ̄/E.
 - In the Hashin criterion the transverse shear strength τ̄₂₃ is taken as σ̄₂⁻/2. The parameter α (shear contribution to fiber failure) defaults to 1 on the Ply tab and to 0 in the laminate analysis, so that shear does not remove a ply completely.

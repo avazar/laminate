@@ -231,6 +231,12 @@ function Diagram({ result, pos, setPos, show, rem }) {
           {result.collapse && (() => {
             const q = [sx(result.collapse.eps[lead] * 100), sy(result.collapse.lam * sign)];
             const k = 0.5 * rem;
+            if (result.collapse.reason === 'flow') {
+              // пластическое течение не заканчивается разрывом: площадка обрывается стрелкой «и так далее»
+              const from = pt(path[path.length - 2], lead);
+              const dir = q[0] >= from[0] ? 1 : -1;
+              return <path class="flow-arrow" d={`M${q[0] + dir * 1.6 * k} ${q[1]}L${q[0] - dir * 0.2 * k} ${q[1] - k}L${q[0] - dir * 0.2 * k} ${q[1] + k}Z`} />;
+            }
             return <path class="rupture" d={`M${q[0] - k} ${q[1] - k}L${q[0] + k} ${q[1] + k}M${q[0] + k} ${q[1] - k}L${q[0] - k} ${q[1] + k}`} />;
           })()}
           {result.events.map((ev, i) => {
@@ -345,7 +351,7 @@ function EventLog({ result, pos, setPos }) {
                 {ev.failures.map((f, k) => (
                   <span class="log-what" key={k}>
                     <StatusIcon kind={f.kind === 'fiber' ? 'fiber' : 'matrix'} />
-                    {plyName(result, f.ply)} — {tr(`mode.${f.label}`)}{tr(f.kind === 'matrix' ? 'log.toNetting' : 'log.removed')}
+                    {plyName(result, f.ply)} — {tr(`mode.${f.label}`)}{tr(f.kind !== 'matrix' ? 'log.removed' : result.matrix === 'plastic' ? 'log.toPlastic' : 'log.toNetting')}
                   </span>
                 ))}
               </span>
@@ -355,9 +361,9 @@ function EventLog({ result, pos, setPos }) {
       })}
       {collapse && (
         <li class={`log-item log-final ${pos >= result.path.length - 1 - 1e-6 ? 'is-done' : ''}`}>
-          <span class="log-n event-final">✕</span>
+          <span class="log-n event-final">{collapse.reason === 'flow' ? '→' : '✕'}</span>
           <span class="log-text">
-            <span class="log-what">{tr(collapse.reason === 'allFailed' ? 'log.allFailed' : 'log.mechanism')}</span>
+            <span class="log-what">{tr(collapse.reason === 'allFailed' ? 'log.allFailed' : collapse.reason === 'flow' ? 'log.flow' : 'log.mechanism')}</span>
           </span>
         </li>
       )}
@@ -392,12 +398,14 @@ export function LaminateTab({ active, materials, state, setState, rem, panels })
     [state.plies, materials],
   );
   const criterion = criterionById(state.criterionId) || MODAL_CRITERIA[0];
+  // Что происходит с σ₂ и τ₁₂ слоя после разрушения матрицы: сбрасываются до нуля или остаются.
+  const matrix = state.matrix === 'plastic' ? 'plastic' : 'brittle';
   // У расчёта пакета свой α, не связанный с ползунком на вкладке «Слой». По умолчанию 0: волокно рвётся только
   // по σ₁, и сдвиг не выключает слой целиком. τ̄₂₃ для каждого материала принимается равной σ̄₂⁻/2.
   const simOptions = useMemo(() => ({ ...DEFAULT_OPTIONS, hashinAlpha: state.hashinAlpha ? 1 : 0, hashinSt: null }), [state.hashinAlpha]);
   const result = useMemo(
-    () => simulate({ plies, load: state.load, criterion, control: state.control, options: simOptions }),
-    [plies, state.load, criterion, state.control, simOptions],
+    () => simulate({ plies, load: state.load, criterion, control: state.control, matrix, options: simOptions }),
+    [plies, state.load, criterion, state.control, matrix, simOptions],
   );
   const pb = usePlayback(result);
   // Пробел запускает и останавливает испытание, если фокус не в поле ввода и не на кнопке.
@@ -440,6 +448,11 @@ export function LaminateTab({ active, materials, state, setState, rem, panels })
           <Segmented label={tr('analysis.controlLabel')} value={state.control} onChange={(v) => set({ control: v })} options={[{ value: 'strain', label: tr('control.strain'), title: tr('control.strainTitle') }, { value: 'load', label: tr('control.load'), title: tr('control.loadTitle') }]} />
         </div>
         <p class="note">{tr(state.control === 'strain' ? 'control.strainNote' : 'control.loadNote')}</p>
+        <div class="field">
+          <span class="field-label">{tr('analysis.matrix')}</span>
+          <Segmented label={tr('analysis.matrixLabel')} value={matrix} onChange={(v) => set({ matrix: v })} options={[{ value: 'brittle', label: tr('matrix.brittle'), title: tr('matrix.brittleTitle') }, { value: 'plastic', label: tr('matrix.plastic'), title: tr('matrix.plasticTitle') }]} />
+        </div>
+        <p class="note">{tr(matrix === 'plastic' ? 'matrix.plasticNote' : 'matrix.brittleNote')}</p>
       </Panel>
     </div>
     <Gutter side="left" hidden={panels.hideLeft} onToggle={() => panels.toggle('hideLeft')} />
@@ -510,7 +523,7 @@ export function LaminateTab({ active, materials, state, setState, rem, panels })
                   <span class="mono ply-n">{i + 1}</span>
                   <span class="mono ply-angle">{angleText(p.angle)}°</span>
                   <span class={`mat-chip mat-${p.material.id} is-static`}>{tr(`mat.${p.material.id}.short`)}</span>
-                  <span class="ply-status" key={states[i]}><StatusIcon kind={STATE_ICON[states[i]]} />{tr(`state.${states[i]}`)}</span>
+                  <span class="ply-status" key={states[i]}><StatusIcon kind={STATE_ICON[states[i]]} />{tr(states[i] === 'matrix' && result.matrix === 'plastic' ? 'state.matrixPlastic' : `state.${states[i]}`)}</span>
                   <span class="meter" aria-hidden="true"><span class="meter-fill" style={{ width: `${clamp(F, 0, 1) * 100}%` }} /></span>
                   <span class="mono crit-f">{states[i] === 'failed' || !cur.stage.carries ? '—' : fmt(F, 2)}</span>
                 </li>

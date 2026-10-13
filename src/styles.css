@@ -336,7 +336,7 @@ input[type='checkbox'] { accent-color: var(--ink); width: 1.05rem; height: 1.05r
 .ply-head { color: var(--muted); font-size: 0.74rem; padding-block: 0; }
 .ply-n { color: var(--muted); font-size: 0.82rem; }
 .row-btns { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.load-box { display: grid; grid-template-columns: 7.2rem minmax(0, 1fr); gap: 0.8rem; align-items: center; }
+.load-box { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: 0.8rem; align-items: center; }
 .load-glyph { width: 100%; height: auto; display: block; }
 .plate { fill: var(--surface-2); stroke: var(--ink-2); stroke-width: 1.5; }
 .load-arrows line { stroke: var(--ink); stroke-width: 2.2; }
@@ -361,6 +361,7 @@ input[type='checkbox'] { accent-color: var(--ink); width: 1.05rem; height: 1.05r
 .curve-ghost { stroke-width: 1.5px; opacity: 0.3; }
 .playhead { stroke: var(--surface); stroke-width: 2.5px; }
 .rupture { fill: none; stroke: var(--fiber); stroke-width: 3px; stroke-linecap: round; }
+.flow-arrow { fill: var(--matrix); stroke: var(--surface); stroke-width: 1.5px; stroke-linejoin: round; }
 .event-mark { cursor: pointer; }
 .event-mark circle, .event-mark rect { fill: var(--surface); stroke-width: 2.5px; }
 .event-mark text { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500; fill: var(--ink); pointer-events: none; }

@@ -22,7 +22,7 @@ const freshState = () => ({
   },
   lam: {
     plies: [0, 45, -45, 90].map((a) => makePly('carbon', a)),
-    load: [1, 0, 0], criterionId: 'hashin', hashinAlpha: 0, control: 'strain', show: [true, true, false],
+    load: [1, 0, 0], criterionId: 'hashin', hashinAlpha: 0, control: 'strain', matrix: 'brittle', show: [true, true, false],
   },
 });
 
@@ -52,6 +52,7 @@ const F = {
   A: 'A_{mn}=\\sum \\bar B_{mn}^{(i)}\\bar h_i',
   netting: 'E_2=G_{12}=\\nu=0',
   fiber: '\\sigma_1=E_1\\varepsilon_1',
+  matrixStress: '\\sigma_2,\\ \\tau_{12}',
   ratio: '\\sigma_x:\\sigma_y:\\tau_{xy}',
 };
 const repoLink = <a href={REPO_URL} target="_blank" rel="noopener">github.com/avazar/laminate</a>;
@@ -68,8 +69,8 @@ function AboutRu() {
       <ol>
         <li>Все слои ортотропные. По жёсткости пакета находятся деформации, затем напряжения в осях каждого слоя.</li>
         <li>По выбранному критерию определяется слой, который разрушится первым, нагрузка и режим разрушения.</li>
-        <li>Разрушилась матрица — слой переходит на нитяную модель: <Tex>{F.netting}</Tex>, остаётся <Tex>{F.fiber}</Tex>. Разрушилось волокно — слой выключается.</li>
-        <li>Жёсткость пересчитывается, шаги повторяются, пока пакет способен нести нагрузку. Пакет из нитяных слоёв может оказаться механизмом — тогда расчёт заканчивается.</li>
+        <li>Разрушилась матрица — слой переходит на нитяную модель: <Tex>{F.netting}</Tex>, остаётся <Tex>{F.fiber}</Tex>. Набранные к этому моменту <Tex>{F.matrixStress}</Tex> либо сбрасываются до нуля (хрупкая матрица), либо остаются на достигнутом уровне и дальше не растут (пластичная) — это задаёт переключатель «разрушенная матрица». Разрушилось волокно — слой выключается.</li>
+        <li>Жёсткость пересчитывается, шаги повторяются, пока пакет способен нести нагрузку. Пакет из нитяных слоёв может оказаться механизмом — тогда расчёт заканчивается: при хрупкой матрице обрушением, при пластичной — площадкой текучести.</li>
       </ol>
       <p>Нагружение пропорциональное: задаётся соотношение <Tex>{F.ratio}</Tex>. Между событиями всё линейно, диаграмма строится точно, без шагов по нагрузке. Остаточные температурные напряжения и расслоение не учитываются.</p>
       <p class="note">Исходный код и тесты расчётного ядра: {repoLink} (лицензия MIT). Использованы three.js, KaTeX, Preact и шрифты IBM Plex. <a href="THIRD-PARTY-LICENSES.txt" target="_blank" rel="noopener">Лицензии сторонних компонентов</a>.</p>
@@ -90,8 +91,8 @@ function AboutEn() {
       <ol>
         <li>All plies are orthotropic. The laminate stiffness gives the strains, then the stresses in the axes of each ply.</li>
         <li>The chosen criterion gives the ply that fails first, the load and the failure mode.</li>
-        <li>Matrix failure switches the ply to the netting model: <Tex>{F.netting}</Tex>, only <Tex>{F.fiber}</Tex> remains. Fiber failure removes the ply.</li>
-        <li>The stiffness is recomputed and the steps repeat while the laminate can carry the load. A laminate of netting plies may turn out to be a mechanism; the analysis then stops.</li>
+        <li>Matrix failure switches the ply to the netting model: <Tex>{F.netting}</Tex>, only <Tex>{F.fiber}</Tex> remains. The <Tex>{F.matrixStress}</Tex> reached by then either drop to zero (brittle matrix) or stay at that level and stop growing (plastic matrix); the “failed matrix” switch selects which. Fiber failure removes the ply.</li>
+        <li>The stiffness is recomputed and the steps repeat while the laminate can carry the load. A laminate of netting plies may turn out to be a mechanism; the analysis then stops: with a collapse for the brittle matrix, with a yield plateau for the plastic one.</li>
       </ol>
       <p>Loading is proportional: the ratio <Tex>{F.ratio}</Tex> is prescribed. Between events everything is linear, so the curve is exact, with no load stepping. Residual thermal stresses and delamination are not considered.</p>
       <p class="note">Source code and solver tests: {repoLink} (MIT license). Built with three.js, KaTeX, Preact and the IBM Plex fonts. <a href="THIRD-PARTY-LICENSES.txt" target="_blank" rel="noopener">Third-party licenses</a>.</p>

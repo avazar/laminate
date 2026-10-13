@@ -200,6 +200,46 @@ test('сосуд давления: пара ±φ после разрушения
   }
 });
 
+test('пластичная матрица: напряжения сохраняются, диаграмма без срывов до разрыва волокна', () => {
+  const sim = (angles, load, crit, control, matrix) => simulate({ plies: layup(carbon, angles), load, criterion: criterionById(crit), control, matrix, options: { ...DEFAULT_OPTIONS, hashinAlpha: 0 } });
+  // [0/90]: слой 90° продолжает нести σ̄₂⁺, поэтому предел выше на h̄·σ̄₂⁺ = 25 МПа
+  const brittle = sim([0, 90], [1, 0, 0], 'maxStress', 'strain', 'brittle');
+  const plastic = sim([0, 90], [1, 0, 0], 'maxStress', 'strain', 'plastic');
+  close(brittle.ultimate.lam, 1000, 1e-9);
+  close(plastic.ultimate.lam, 1000 + 0.5 * carbon.s2p, 1e-9);
+  close(plastic.first.lam, brittle.first.lam, 1e-9);
+  // до разрыва волокна на пути нет ни срывов, ни скачков
+  const untilFiber = plastic.path.slice(0, plastic.events[1].pathIndex + 1);
+  assert.ok(untilFiber.every((q) => q.kind === 'start' || q.kind === 'load'));
+  assert.ok(brittle.path.some((q) => q.kind === 'drop' && q.lam > 0));
+  // после разрыва волокна 0° слой 90° течёт при своих 25 МПа
+  assert.equal(plastic.collapse.reason, 'flow');
+  close(plastic.collapse.lam, 0.5 * carbon.s2p, 1e-9);
+  // при мягком нагружении удержать предельную нагрузку нечем
+  assert.equal(sim([0, 90], [1, 0, 0], 'maxStress', 'load', 'plastic').collapse.reason, 'mechanism');
+
+  // [±45]: вместо обрушения — площадка при той же нагрузке
+  for (const control of ['strain', 'load']) {
+    const b = sim([45, -45], [1, 0, 0], 'hashin', control, 'brittle'), q = sim([45, -45], [1, 0, 0], 'hashin', control, 'plastic');
+    close(q.ultimate.lam, b.ultimate.lam, 1e-9);
+    assert.equal(q.collapse.reason, 'flow');
+    const last = q.path[q.path.length - 1], prev = q.path[q.path.length - 2];
+    assert.equal(last.kind, 'flow');
+    close(last.lam, prev.lam, 1e-12);
+    assert.ok(last.eps[0] > prev.eps[0]);
+  }
+
+  // показатели слоёв нигде на ветвях нагружения не превышают единицу; квазиизотропный пакет выигрывает в пределе
+  for (const [angles, load, crit] of [[[0, 45, -45, 90], [1, 0, 0], 'hashin'], [[0, 45, -45, 90], [0, 0, 1], 'hashin'], [[0, 90], [1, 1, 0.3], 'vasiliev'], [[30, -30, 90], [1, 0.4, 0.2], 'maxStrain']]) {
+    for (const control of ['strain', 'load']) {
+      const q = sim(angles, load, crit, control, 'plastic');
+      assert.ok(q.collapse, 'расчёт должен заканчиваться');
+      q.path.forEach((pt, i) => { if (pt.kind === 'load') for (const F of sampleAt(q, i).indices) assert.ok(F <= 1 + 1e-6, `${angles} ${crit} ${control}: F = ${F}`); });
+      assert.ok(q.ultimate.lam >= sim(angles, load, crit, control, 'brittle').ultimate.lam * (1 - 1e-9));
+    }
+  }
+});
+
 test('гибридный пакет считается', () => {
   const plies = [{ material: carbon, angle: 0, h: 1 }, { material: glass, angle: 90, h: 2 }, { material: aramid, angle: 45, h: 1 }, { material: aramid, angle: -45, h: 1 }];
   const r = run(plies, [1, 0.5, 0], 'maxStrain', 'load');
