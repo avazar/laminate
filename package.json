@@ -3,12 +3,13 @@
   "private": true,
   "license": "MIT",
   "version": "1.0.0",
-  "description": "Критерии прочности и прогрессивное разрушение слоистых композитов — учебный статический сайт",
+  "description": "Переадресация прежнего адреса лаборатории прочности в Composite",
   "type": "module",
   "scripts": {
-    "build": "node build.mjs",
-    "watch": "node build.mjs --watch",
-    "test": "node --test test/core.test.mjs"
+    "build": "node build-redirect.mjs",
+    "build:legacy": "node build.mjs",
+    "watch:legacy": "node build.mjs --watch",
+    "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
